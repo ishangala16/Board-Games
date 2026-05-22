@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Cosmic gradient for the glowing elements -->
+    <linearGradient id="cosmic-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff88a5" />
+      <stop offset="50%" stop-color="#9b51e0" />
+      <stop offset="100%" stop-color="#4b90ff" />
+    </linearGradient>
+
+    <!-- Dark glass gradient for the token body -->
+    <linearGradient id="glass-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1f1a3a" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#0d0b18" stop-opacity="0.9" />
+    </linearGradient>
+
+    <!-- Outer ring gradient -->
+    <linearGradient id="ring-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4b90ff" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#ff88a5" stop-opacity="0.5" />
+    </linearGradient>
+
+    <!-- Glow filters -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="outer-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="25" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Ambient background glow (optional, kept subtle to allow transparency) -->
+  <circle cx="256" cy="256" r="220" fill="url(#cosmic-grad)" opacity="0.15" filter="url(#outer-glow)" />
+
+  <!-- Outer Token Rim -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="url(#cosmic-grad)" stroke-width="6" filter="url(#glow)" />
+  <circle cx="256" cy="256" r="195" fill="none" stroke="url(#ring-grad)" stroke-width="2" stroke-dasharray="12 24" />
+
+  <!-- Glassmorphic Token Body -->
+  <circle cx="256" cy="256" r="185" fill="url(#glass-grad)" stroke="rgba(255, 255, 255, 0.15)" stroke-width="2" />
+
+  <!-- Game Token Details (Poker chip-like notches) -->
+  <g stroke="url(#cosmic-grad)" stroke-width="4" opacity="0.7">
+    <line x1="256" y1="46" x2="256" y2="60" />
+    <line x1="256" y1="452" x2="256" y2="466" />
+    <line x1="46" y1="256" x2="60" y2="256" />
+    <line x1="452" y1="256" x2="466" y2="256" />
+  </g>
+
+  <!-- Central Cosmic Star (8-pointed) -->
+  <path d="M 256,120 
+           L 278,210 
+           L 368,232 
+           L 278,254 
+           L 256,344 
+           L 234,254 
+           L 144,232 
+           L 234,210 Z" 
+        fill="url(#cosmic-grad)" 
+        filter="url(#glow)" />
+
+  <path d="M 256,170 
+           L 267,221 
+           L 318,232 
+           L 267,243 
+           L 256,294 
+           L 245,243 
+           L 194,232 
+           L 245,221 Z" 
+        fill="#ffffff" 
+        opacity="0.9" />
+
+  <!-- Diagonal Star Flares -->
+  <path d="M 256,232 
+           L 285,203
+           M 256,232 
+           L 227,261
+           M 256,232 
+           L 285,261
+           M 256,232 
+           L 227,203" 
+        stroke="#ffffff" 
+        stroke-width="3" 
+        stroke-linecap="round" 
+        opacity="0.8" />
+
+  <!-- Micro Orbiting Sparks -->
+  <circle cx="340" cy="160" r="4" fill="#ff88a5" filter="url(#glow)" />
+  <circle cx="160" cy="320" r="5" fill="#4b90ff" filter="url(#glow)" />
+  <circle cx="360" cy="300" r="3" fill="#ffffff" />
+  <circle cx="150" cy="170" r="3" fill="#ffffff" />
+</svg>

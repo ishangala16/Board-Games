@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-    title: "Board Game Platform",
-    description: "Private multiplayer board games",
+    title: "Game Night",
+    description: "Play real-time multiplayer board games like Sequence, Splendor, and more in a premium, cosmic-themed lounge.",
 };
 
 export default function RootLayout({

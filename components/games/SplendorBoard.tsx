@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { SplendorState, Card, Noble, Gem, Tier } from "../../lib/games/Splendor";
+import { SplendorState, Card, Noble, Gem, Tier, canBuyCard } from "../../lib/games/Splendor";
 import SplendorPlayer from "./SplendorPlayer";
 
 interface SplendorBoardProps {
@@ -67,19 +67,32 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
 
     const handleBuyCard = (card: Card) => {
         if (!isMyTurn) return;
-        // Simple click to buy for MVP
         onAction({ type: "BUY_CARD", playerId: playerUsername, cardId: card.id });
     };
 
-    const renderCard = (card: Card, tier: Tier) => {
-        // Determine if affordable (Simple check)
-        // ... (Logic can be added for visual feedback)
+    const handleReserveCard = (card: Card) => {
+        if (!isMyTurn) return;
+        if (me.reserved.length >= 3) {
+            alert("You cannot reserve more than 3 cards.");
+            return;
+        }
+        onAction({ type: "RESERVE_CARD", playerId: playerUsername, cardId: card.id });
+    };
+
+    const renderCard = (card: Card, tier: Tier, isReservedList = false) => {
+        const { canBuy } = me ? canBuyCard(me, card) : { canBuy: false };
+        const canReserve = me && me.reserved.length < 3 && !isReservedList;
 
         return (
             <div
                 key={card.id}
-                onClick={() => handleBuyCard(card)}
-                className={`relative bg-warm-black border border-white/20 rounded-md sm:rounded-lg p-1 sm:p-2 w-14 h-20 sm:w-24 sm:h-32 flex flex-col justify-between hover:scale-105 transition-transform cursor-pointer group shadow-xl`}
+                className={`relative bg-warm-black border rounded-md sm:rounded-lg p-1 sm:p-2 w-16 h-24 sm:w-24 sm:h-32 flex flex-col justify-between hover:scale-105 transition-all shadow-xl group overflow-hidden
+                    ${isMyTurn && canBuy 
+                        ? "border-emerald-500/80 shadow-emerald-500/10 ring-1 ring-emerald-500/30 scale-[1.02]" 
+                        : isMyTurn 
+                            ? "border-white/10 opacity-70 hover:opacity-100" 
+                            : "border-white/10 opacity-80"
+                    }`}
             >
                 {/* Header: Points & Bonus */}
                 <div className="flex justify-between items-start">
@@ -87,28 +100,56 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
                     <div className={`w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full ${GEM_STYLES[card.bonus as Gem].split(" ")[0]} shadow-sm border border-white/20`} />
                 </div>
 
-                {/* Tier Indicator (Subtle) */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/5 text-xl sm:text-4xl font-bold select-none pointer-events-none">
-                    {tier === 1 ? "•" : tier === 2 ? "••" : "•••"}
-                </div>
+                {/* Tier Indicator (Subtle) - Only show if in market */}
+                {!isReservedList && (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/5 text-xl sm:text-4xl font-bold select-none pointer-events-none">
+                        {tier === 1 ? "•" : tier === 2 ? "••" : "•••"}
+                    </div>
+                )}
 
                 {/* Footer: Cost */}
-                <div className="flex flex-row flex-wrap sm:flex-col gap-0.5 sm:space-y-1">
+                <div className="flex flex-row gap-0.5 sm:gap-1 mt-auto">
                     {(Object.keys(card.cost) as Gem[]).map(gem => {
                         const cost = card.cost[gem as keyof typeof card.cost];
                         if (!cost) return null;
                         return (
-                            <div key={gem} className={`flex items-center justify-center w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full text-[8px] sm:text-[10px] font-bold ${GEM_STYLES[gem].split(" ")[0]} text-white border border-white/40`}>
+                            <div key={gem} className={`flex items-center justify-center w-3 h-3 sm:w-4 sm:h-4 rounded-full text-[7px] sm:text-[9px] font-bold ${GEM_STYLES[gem].split(" ")[0]} text-white border border-white/40 leading-none`}>
                                 {cost}
                             </div>
                         );
                     })}
                 </div>
 
-                {/* Buy Overlay */}
-                <div className="absolute inset-0 bg-indigo-500/20 rounded-md sm:rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="bg-black/80 text-white text-[8px] sm:text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded">Buy</span>
-                </div>
+                {/* Buy & Reserve Action Overlay (Only on turn) */}
+                {isMyTurn && (
+                    <div className="absolute inset-0 bg-black/65 backdrop-blur-[3px] rounded-md sm:rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-1 sm:p-2 border border-indigo-500/30">
+                        {canBuy && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleBuyCard(card);
+                                }}
+                                className="w-full py-0.5 sm:py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[8px] sm:text-[11px] font-extrabold rounded shadow-md shadow-emerald-950/50 transition-all hover:scale-105 active:scale-95 leading-none truncate px-0.5"
+                            >
+                                Buy
+                            </button>
+                        )}
+                        {canReserve && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReserveCard(card);
+                                }}
+                                className="w-full py-0.5 sm:py-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-[8px] sm:text-[11px] font-extrabold rounded shadow-md shadow-amber-950/50 transition-all hover:scale-105 active:scale-95 leading-none truncate px-0.5"
+                            >
+                                Reserve
+                            </button>
+                        )}
+                        {!canBuy && !canReserve && (
+                            <span className="text-[8px] sm:text-[10px] text-gray-400 text-center font-semibold bg-black/50 px-1 py-0.5 rounded border border-white/5">Locked</span>
+                        )}
+                    </div>
+                )}
             </div>
         );
     };
@@ -122,9 +163,9 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
                     <SplendorPlayer player={me} isMe={true} isActive={isMyTurn} />
 
                     {/* Action Hint */}
-                    <div className="p-3 bg-black/30 rounded-lg text-xs text-gray-400 min-h-[60px] sm:min-h-[80px]">
+                    <div className="p-3 bg-black/30 border border-white/5 rounded-lg text-xs text-gray-400 min-h-[60px] sm:min-h-[80px]">
                         <div className="font-bold text-gray-300 mb-1">
-                            Current Action: {isMyTurn ? <span className="text-green-400">Your Turn</span> : "Waiting..."}
+                            Current Action: {isMyTurn ? <span className="text-green-400 animate-pulse">Your Turn</span> : "Waiting..."}
                         </div>
                         {selectedTokens.length > 0 ? (
                             <div className="flex items-center gap-2 mt-2">
@@ -137,7 +178,7 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
                                 <button onClick={() => setSelectedTokens([])} className="text-red-400 ml-auto hover:underline">Clear</button>
                             </div>
                         ) : (
-                            isMyTurn && <p>Select tokens or click a card to buy.</p>
+                            isMyTurn && <p>Select tokens, reserve a card, or buy a card.</p>
                         )}
                     </div>
                 </div>
@@ -146,17 +187,28 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
             {/* Center: The Board */}
             <div className="flex-1 flex flex-col gap-4 sm:gap-6">
 
-                {/* Nobles Row */}
+                {/* Nobles (Achievements) Row */}
                 <div className="flex justify-center gap-2 sm:gap-4 min-h-[60px] sm:min-h-[100px] flex-wrap sm:flex-nowrap">
                     {gameState.nobles.map(noble => (
-                        <div key={noble.id} className="w-14 h-14 sm:w-20 sm:h-20 bg-purple-900 border border-[#9b51e0] sm:border-2 rounded flex flex-col items-center justify-center shadow-lg transform hover:scale-105 transition-transform" title="Noble (3 pts)">
-                            <span className="text-base sm:text-2xl font-bold text-white drop-shadow">{noble.points}</span>
-                            <div className="grid grid-cols-2 gap-0.5 sm:gap-1 mt-0.5 sm:mt-1">
+                        <div 
+                            key={noble.id} 
+                            className="w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-b from-[#3a1a5e]/90 to-[#120824]/95 border border-[#9b51e0]/40 rounded-lg flex flex-col items-center justify-between p-1 sm:p-2 shadow-xl hover:shadow-indigo-500/10 transform hover:scale-105 transition-all" 
+                            title="Noble Achievement (3 Prestige Points)"
+                        >
+                            <div className="flex justify-between w-full items-center">
+                                <span className="text-[10px] sm:text-xs text-purple-300 font-bold uppercase tracking-wider">👑 Noble</span>
+                                <span className="text-xs sm:text-lg font-extrabold text-amber-400 drop-shadow">{noble.points}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1 w-full mt-1">
                                 {(Object.keys(noble.cost) as Gem[]).map(gem => {
                                     const cost = noble.cost[gem as keyof typeof noble.cost];
                                     if (!cost) return null;
                                     return (
-                                        <div key={gem} className={`w-2.5 h-3.5 sm:w-3 sm:h-4 rounded text-[6px] sm:text-[8px] flex items-center justify-center bg-gray-800 text-white border border-${gem === "RED" ? "red-500" : gem === "GREEN" ? "green-500" : gem === "BLUE" ? "blue-500" : gem === "BLACK" ? "gray-600" : "gray-400"}`}>
+                                        <div 
+                                            key={gem} 
+                                            className={`flex items-center justify-center gap-0.5 rounded px-1 py-0.5 text-[8px] sm:text-[10px] font-bold ${GEM_STYLES[gem].split(" ")[0]} text-white border border-white/20 leading-none`}
+                                            title={`${cost} ${gem} Cards required`}
+                                        >
                                             {cost}
                                         </div>
                                     );
@@ -171,9 +223,10 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
                     {[3, 2, 1].map((tier) => (
                         <div key={tier} className="flex items-center justify-center gap-1.5 sm:gap-4">
                             {/* Deck */}
-                            <div className={`w-14 h-20 sm:w-24 sm:h-32 rounded sm:rounded-lg border border-white/10 flex items-center justify-center text-lg sm:text-2xl font-serif text-white/20 select-none 
-                                ${tier === 3 ? "bg-cyan-900" : tier === 2 ? "bg-amber-900" : "bg-emerald-900"}`}>
-                                {gameState.decks[tier as Tier].length}
+                            <div className={`w-16 h-24 sm:w-24 sm:h-32 rounded sm:rounded-lg border border-white/10 flex flex-col items-center justify-center text-xs sm:text-lg font-semibold select-none shadow-md
+                                ${tier === 3 ? "bg-cyan-900/60" : tier === 2 ? "bg-amber-900/60" : "bg-emerald-900/60"}`}>
+                                <span className="text-[9px] sm:text-xs text-white/50 uppercase tracking-widest font-sans">Tier {tier}</span>
+                                <span className="text-base sm:text-3xl font-bold font-serif text-white/90 mt-1">{gameState.decks[tier as Tier].length}</span>
                             </div>
 
                             {/* Visible Cards */}
@@ -190,8 +243,7 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
                             onClick={() => handleTakeToken(gem)}
                             className={`
                                 flex flex-col items-center group cursor-pointer 
-                                ${gem === "GOLD" ? "opacity-30 cursor-not-allowed" : ""} 
-                                /* Gold logic not fully implemented for take tokens */
+                                ${gem === "GOLD" ? "opacity-45 cursor-not-allowed" : ""}
                             `}
                         >
                             <div className={`
@@ -205,6 +257,18 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
                         </div>
                     ))}
                 </div>
+
+                {/* Reserved Cards Section */}
+                {me && me.reserved && me.reserved.length > 0 && (
+                    <div className="mt-2 p-3 bg-black/40 border border-white/10 rounded-xl">
+                        <h4 className="text-xs sm:text-sm font-bold text-indigo-400 mb-2.5 flex items-center gap-1.5">
+                            🔒 Your Reserved Cards <span className="text-[10px] text-gray-500 font-normal">({me.reserved.length}/3)</span>
+                        </h4>
+                        <div className="flex gap-3 justify-center sm:justify-start">
+                            {me.reserved.map(card => renderCard(card, card.tier, true))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

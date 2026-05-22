@@ -31,10 +31,15 @@ export default function SplendorPlayer({ player, isMe, isActive }: { player: Pla
 
             {/* Nobles */}
             {player.nobles.length > 0 && (
-                <div className="flex gap-1 mb-2 sm:mb-3">
+                <div className="flex gap-1.5 mb-2 sm:mb-3 flex-wrap">
                     {player.nobles.map(n => (
-                        <div key={n.id} className="w-6 h-6 sm:w-8 sm:h-8 bg-purple-900 border border-purple-500 rounded flex items-center justify-center text-[10px] sm:text-xs font-serif" title="Noble">
-                            👑
+                        <div 
+                            key={n.id} 
+                            className="px-1.5 py-0.5 bg-gradient-to-br from-yellow-500/20 to-amber-600/30 border border-yellow-500/40 rounded flex items-center gap-0.5 text-[9px] sm:text-[10px] font-bold text-yellow-300 shadow-sm" 
+                            title="Noble Visited (+3 pts)"
+                        >
+                            <span>👑</span>
+                            <span>+3</span>
                         </div>
                     ))}
                 </div>
@@ -45,13 +50,13 @@ export default function SplendorPlayer({ player, isMe, isActive }: { player: Pla
                 {(["WHITE", "BLUE", "GREEN", "RED", "BLACK", "GOLD"] as Gem[]).map(gem => (
                     <div key={gem} className="flex flex-col items-center">
                         {/* Token Count */}
-                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold shadow-sm mb-1 ${GEM_COLORS[gem]} text-[10px] sm:text-xs`}>
+                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold shadow-sm mb-1 ${GEM_COLORS[gem]} text-[10px] sm:text-xs leading-none`}>
                             {player.tokens[gem]}
                         </div>
 
                         {/* Bonus Card Count (Not for Gold) */}
                         {gem !== "GOLD" && (
-                            <div className="w-5 h-6 sm:w-6 sm:h-8 bg-white/10 border border-white/20 rounded flex items-center justify-center text-[8px] sm:text-[10px] text-gray-300" title={`${gem} Bonus`}>
+                            <div className="w-5 h-6 sm:w-6 sm:h-8 bg-white/10 border border-white/20 rounded flex items-center justify-center text-[8px] sm:text-[10px] text-gray-300 leading-none" title={`${gem} Bonus`}>
                                 {bonuses[gem]}
                             </div>
                         )}
