@@ -1,4 +1,4 @@
-import { SequenceState, checkWin, BOARD_LAYOUT, isPartOfSequence } from "./Sequence";
+import { SequenceState, checkWin, BOARD_LAYOUT, isPartOfSequence, isDeadCard } from "./Sequence";
 import { SplendorState, canBuyCard, Gem, Card } from "./Splendor";
 import { CarcassonneState, isValidPlacement, TILE_DEFINITIONS } from "./Carcassonne";
 import { AzulState, COLORS, WALL_PATTERN, TileColor } from "./Azul";
@@ -60,6 +60,19 @@ function generateSequenceMove(state: SequenceState, aiPlayerId: string): any {
     // 2. Play card action
     const hand = state.hands[aiPlayerId] || [];
     if (hand.length === 0) return null;
+
+    // Check if AI holds any dead card, discard it first.
+    for (const card of hand) {
+        if (isDeadCard(card, state.board)) {
+            return {
+                type: "DISCARD_DEAD_CARD",
+                payload: {
+                    playerId: aiPlayerId,
+                    card
+                }
+            };
+        }
+    }
 
     let bestPlay: { card: string; x: number; y: number; score: number } | null = null;
 

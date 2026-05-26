@@ -22,9 +22,11 @@ app.prepare().then(() => {
 
     io.on("connection", (socket) => {
         console.log("Client connected:", socket.id);
+        io.emit("concurrent_players_update", io.engine.clientsCount);
 
         socket.on("disconnect", () => {
             console.log("Client disconnected:", socket.id);
+            io.emit("concurrent_players_update", io.engine.clientsCount);
         });
 
         // Lobby & Chat Events
@@ -35,7 +37,24 @@ app.prepare().then(() => {
         });
 
         socket.on("send_message", ({ room, message, username }) => {
-            io.to(room).emit("receive_message", { username, message, timestamp: new Date() });
+            const upperRoom = typeof room === "string" ? room.toUpperCase() : room;
+            const messageId = Math.random().toString(36).substring(7);
+            io.to(upperRoom).emit("receive_message", { id: messageId, username, message, timestamp: new Date() });
+        });
+
+        socket.on("typing", ({ room, username, isTyping }) => {
+            const upperRoom = typeof room === "string" ? room.toUpperCase() : room;
+            socket.to(upperRoom).emit("typing_update", { username, isTyping });
+        });
+
+        socket.on("message_reaction", ({ room, messageId, reaction, username }) => {
+            const upperRoom = typeof room === "string" ? room.toUpperCase() : room;
+            io.to(upperRoom).emit("message_reaction_update", { messageId, reaction, username });
+        });
+
+        socket.on("buzz_reaction", ({ room, emoji, username }) => {
+            const upperRoom = typeof room === "string" ? room.toUpperCase() : room;
+            io.to(upperRoom).emit("buzz_reaction_update", { emoji, username });
         });
 
         socket.on("create_room", async ({ username, type, isSinglePlayer }: { username: string, type: "SEQUENCE" | "SPLENDOR" | "CARCASSONNE" | "AZUL", isSinglePlayer?: boolean }, callback) => {
@@ -60,16 +79,17 @@ app.prepare().then(() => {
 
         socket.on("join_room", async ({ roomId, username }, callback) => {
             try {
+                const upperRoomId = typeof roomId === "string" ? roomId.toUpperCase() : roomId;
                 // Check if game exists first? joinGame checks internally.
-                const state = await gameManager.joinGame(roomId, username);
+                const state = await gameManager.joinGame(upperRoomId, username);
 
                 if (state) {
-                    socket.join(roomId);
+                    socket.join(upperRoomId);
                     // Broadcast update
-                    io.to(roomId).emit("game_state_update", state);
-                    io.to(roomId).emit("system_message", `${username} joined the game.`);
+                    io.to(upperRoomId).emit("game_state_update", state);
+                    io.to(upperRoomId).emit("system_message", `${username} joined the game.`);
 
-                    console.log(`${username} joined room ${roomId}`);
+                    console.log(`${username} joined room ${upperRoomId}`);
                     if (callback) callback({ success: true });
                 } else {
                     if (callback) callback({ success: false, error: "Room not found or full" });
@@ -136,14 +156,30 @@ app.prepare().then(() => {
 
         socket.on("make_move", async ({ roomId, action }) => {
             try {
-                console.log("Move in", roomId, action);
-                const newState = await gameManager.makeMove(roomId, action);
-                io.to(roomId).emit("game_state_update", newState);
+                const upperRoomId = typeof roomId === "string" ? roomId.toUpperCase() : roomId;
+                console.log("Move in", upperRoomId, action);
+                const newState = await gameManager.makeMove(upperRoomId, action);
+                io.to(upperRoomId).emit("game_state_update", newState);
 
                 // Check and run AI turns
-                handleAITurns(roomId);
+                handleAITurns(upperRoomId);
             } catch (e: any) {
                 console.error("Move error:", e.message);
+                socket.emit("error", e.message);
+            }
+        });
+
+        socket.on("restart_game", async ({ roomId }) => {
+            try {
+                const upperRoomId = typeof roomId === "string" ? roomId.toUpperCase() : roomId;
+                console.log(`Restarting game in room ${upperRoomId}`);
+                const newState = await gameManager.restartGame(upperRoomId);
+                if (newState) {
+                    io.to(upperRoomId).emit("game_state_update", newState);
+                    io.to(upperRoomId).emit("system_message", "The game has been restarted!");
+                }
+            } catch (e: any) {
+                console.error("Restart error:", e.message);
                 socket.emit("error", e.message);
             }
         });

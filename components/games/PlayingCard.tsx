@@ -1,38 +1,34 @@
 "use client";
 
-const SUITS: Record<string, { symbol: string, color: string, path: string }> = {
+const SUITS: Record<string, { symbol: string, color: string }> = {
     'H': {
         symbol: '♥',
-        color: 'text-red-600',
-        path: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+        color: 'text-red-600'
     },
     'D': {
         symbol: '♦',
-        color: 'text-red-600',
-        path: "M12 2L4 12l8 10 8-10L12 2z" // Simplified Diamond
+        color: 'text-red-600'
     },
     'C': {
         symbol: '♣',
-        color: 'text-gray-900',
-        path: "M19 13.5c0-1.28-1.01-2.33-2.45-2.4 1.05-.91 1.63-2.18 1.43-3.62C17.65 5.58 15.7 4.5 14 5.26c.22-1.32-.47-2.61-1.66-3.08-1.19-.48-2.55-.05-3.23 1.05-.68-1.1-2.04-1.54-3.23-1.06-1.18.47-1.88 1.76-1.66 3.08-1.7-.76-3.65.32-3.98 2.22-.2 1.44.38 2.71 1.43 3.62C.26 11.17-.75 12.23.75 13.5c1.47 1.25 3.51 1.15 4.96-.06l.79.78v3.68H5v2h4v-2h-.5c1.93 0 3.5-1.57 3.5-3.5 0-1.93-1.57-3.5-3.5-3.5v-2.09c1.9 1.9 5.25 2.15 7.03 2.15 1.54 0 2.5-1.28 2.5-2.82h1z" // Complex Club? No, let's use a simpler path or relying on unicode for now if path is hard, but user wants visuals. Let's try to make a nice SVG.
+        color: 'text-gray-900'
     },
     'S': {
         symbol: '♠',
-        color: 'text-gray-900',
-        path: "M12 2C9 2 7 4 7 6c0 1.5 1 2.5 2 3 .5-2 2-3 3-3s2.5 1 3 3c1-.5 2-1.5 2-3 0-2-2-4-5-4z M12 22s-6-5-6-10c0-3 3-5 6-5s6 2 6 5c0 5-6 10-6 10z" // Terrible spade path, let's rely on standard icons or unicode for specific shapes if I can't generate perfect paths.
-        // Actually, let's use a standard Unicode character with large font-size and "text-fill-transparent background-clip" trick or just big clean text for now, but formatted nicely.
-        // Wait, user asked for visuals. I will try to render a nice layout.
-        // Plan: Middle is the suit count or large suit. Corners are Rank + Suit.
+        color: 'text-gray-900'
     }
 };
 
-// Better Paths
+// High-fidelity standard Bootstrap card suit paths (viewBox "0 0 16 16")
 const PATHS = {
-    H: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
-    S: "M12,2C9,2,6,3.5,6,6c0,1,0.5,1.5,1.5,2.5c-2.5,1-3.5,3.5-3.5,5.5c0,3.5,3,6,8,8c5-2,8-4.5,8-8c0-2-1-4.5-3.5-5.5 C17.5,7.5,18,7,18,6C18,3.5,15,2,12,2z M12,22c-0.5,0-1,0-1,0v-2c0,0,2,0,2,0V22z", // Approx spade
-    D: "M12 2L4 12l8 10 8-10L12 2z",
-    C: "M16.5,9c-1.5,0-2.5,1-3,2c0.5-2,0-4-2-5c-2,1-2.5,3-2,5c-0.5-1-1.5-2-3-2C5,9,4,10.5,4,12c0,1.5,1,2.5,2.5,2.5c1,0,2-0.5,2.5-1 c-0.5,2.5,1,4.5,3,4.5v3h4v-3c2,0,3.5-2,3-4.5c0.5,0.5,1.5,1,2.5,1C23,14.5,24,13.5,24,12C24,10.5,23,9,16.5,9z"
+    H: "M4 1c2.21 0 4 1.755 4 3.92C8 2.755 9.79 1 12 1s4 1.755 4 3.92c0 3.263-3.234 4.414-7.608 9.608a.513.513 0 0 1-.784 0C3.234 9.334 0 8.183 0 4.92 0 2.755 1.79 1 4 1",
+    S: "M7.184 11.246A3.5 3.5 0 0 1 1 9c0-1.602 1.14-2.633 2.66-4.008C4.986 3.792 6.602 2.33 8 0c1.398 2.33 3.014 3.792 4.34 4.992C13.86 6.367 15 7.398 15 9a3.5 3.5 0 0 1-6.184 2.246 20 20 0 0 0 1.582 2.907c.231.35-.02.847-.438.847H6.04c-.419 0-.67-.497-.438-.847a20 20 0 0 0 1.582-2.907",
+    D: "M2.45 7.4 7.2 1.067a1 1 0 0 1 1.6 0L13.55 7.4a1 1 0 0 1 0 1.2L8.8 14.933a1 1 0 0 1-1.6 0L2.45 8.6a1 1 0 0 1 0-1.2z",
+    C: "M11.5 12.5a3.5 3.5 0 0 1-2.684-1.254 20 20 0 0 0 1.582 2.907c.231.35-.02.847-.438.847H6.04c-.419 0-.67-.497-.438-.847a20 20 0 0 0 1.582-2.907 3.5 3.5 0 1 1-2.538-5.743 3.5 3.5 0 1 1 6.708 0A3.5 3.5 0 1 1 11.5 12.5"
 };
+
+// Material design visibility/eye icon SVG path (viewBox "0 0 24 24")
+const EYE_PATH = "M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z";
 
 export default function PlayingCard({ code, mini = false, selected = false, onClick }: { code: string, mini?: boolean, selected?: boolean, onClick?: () => void }) {
     if (code === "XX" || !code) {
@@ -51,10 +47,14 @@ export default function PlayingCard({ code, mini = false, selected = false, onCl
     const suit = SUITS[suitCode] || { symbol: '?', color: 'text-gray-500' };
     const path = (PATHS as any)[suitCode];
 
+    const isJack = rank === "J";
+    const isOneEyedJack = isJack && (suitCode === "S" || suitCode === "H");
+    const isTwoEyedJack = isJack && (suitCode === "C" || suitCode === "D");
+
     const bgColor = "bg-gray-100";  // Classic paper look
     const borderColor = selected ? "border-[#9b51e0] ring-4 ring-[#9b51e0]/40" : "border-gray-300";
 
-    // Mini-mode for board grid
+    // Mini-mode for board grid (keeps it very simple, rank absolute in corners, suit symbol center)
     if (mini) {
         return (
             <div onClick={onClick} className={`
@@ -68,23 +68,49 @@ export default function PlayingCard({ code, mini = false, selected = false, onCl
         );
     }
 
-    // Full-mode for Hand
+    // Full-mode for Hand: Rank (+ eye icons if Jack) + Suit symbol in corners, shape in middle (100% consistent layout)
     return (
         <div onClick={onClick} className={`
             w-16 h-24 sm:w-20 sm:h-30 md:w-24 md:h-36 ${bgColor} rounded-lg sm:rounded-xl shadow-lg sm:shadow-xl border-2 ${borderColor}
-            flex flex-col relative justify-between p-1 sm:p-2 cursor-pointer
+            relative cursor-pointer overflow-hidden
             transform transition-all active:scale-95 hover:scale-105
         `}>
-            {/* Top Left */}
-            <div className={`flex flex-col items-center leading-none ${suit.color}`}>
-                <span className="text-sm sm:text-base md:text-xl font-bold font-serif">{rank}</span>
-                <span className="text-xs sm:text-sm md:text-lg">{suit.symbol}</span>
+            {/* Top Left Corner: 2-Column layout for Jacks (J+Suit shape in left col, eyes side-by-side in right col aligned with J) */}
+            <div className={`absolute top-1.5 left-1.5 sm:top-2 sm:left-2.5 flex items-start gap-1 sm:gap-1.5 ${suit.color}`}>
+                {/* Column 1: Rank + Suit shape */}
+                <div className="flex flex-col items-center">
+                    {/* Rank container for height matching */}
+                    <div className="h-4 sm:h-5 md:h-6 flex items-center justify-center">
+                        <span className="text-sm sm:text-base md:text-xl font-bold font-serif leading-none">{rank}</span>
+                    </div>
+                    {path ? (
+                        <svg viewBox="0 0 16 16" className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 fill-current mt-0.5 sm:mt-1">
+                            <path d={path} />
+                        </svg>
+                    ) : (
+                        <span className="text-xs sm:text-sm md:text-lg leading-none">{suit.symbol}</span>
+                    )}
+                </div>
+
+                {/* Column 2: Side-by-Side Eye Icons (Aligned vertically with Rank text) */}
+                {isJack && (
+                    <div className="h-4 sm:h-5 md:h-6 flex items-center gap-0.5">
+                        <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 fill-current">
+                            <path d={EYE_PATH} />
+                        </svg>
+                        {isTwoEyedJack && (
+                            <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 fill-current">
+                                <path d={EYE_PATH} />
+                            </svg>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {/* Center Image */}
-            <div className={`absolute inset-0 flex items-center justify-center opacity-20 ${suit.color}`}>
+            {/* Center Image (Standard suit in center, slightly smaller for cleaner visual balance) */}
+            <div className={`absolute inset-0 flex items-center justify-center opacity-25 ${suit.color} pointer-events-none`}>
                 {path ? (
-                    <svg viewBox="0 0 24 24" className="w-8 h-8 sm:w-12 sm:h-12 md:w-16 md:h-16 fill-current">
+                    <svg viewBox="0 0 16 16" className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 fill-current">
                         <path d={path} />
                     </svg>
                 ) : (
@@ -92,10 +118,36 @@ export default function PlayingCard({ code, mini = false, selected = false, onCl
                 )}
             </div>
 
-            {/* Bottom Right */}
-            <div className={`flex flex-col items-center leading-none transform rotate-180 ${suit.color}`}>
-                <span className="text-sm sm:text-base md:text-xl font-bold font-serif">{rank}</span>
-                <span className="text-xs sm:text-sm md:text-lg">{suit.symbol}</span>
+            {/* Bottom Right Corner (rotated and mirrored) */}
+            <div className={`absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2.5 flex items-start gap-1 sm:gap-1.5 transform rotate-180 ${suit.color}`}>
+                {/* Column 1: Rank + Suit shape */}
+                <div className="flex flex-col items-center">
+                    {/* Rank container for height matching */}
+                    <div className="h-4 sm:h-5 md:h-6 flex items-center justify-center">
+                        <span className="text-sm sm:text-base md:text-xl font-bold font-serif leading-none">{rank}</span>
+                    </div>
+                    {path ? (
+                        <svg viewBox="0 0 16 16" className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 fill-current mt-0.5 sm:mt-1">
+                            <path d={path} />
+                        </svg>
+                    ) : (
+                        <span className="text-xs sm:text-sm md:text-lg leading-none">{suit.symbol}</span>
+                    )}
+                </div>
+
+                {/* Column 2: Side-by-Side Eye Icons (Aligned vertically with Rank text) */}
+                {isJack && (
+                    <div className="h-4 sm:h-5 md:h-6 flex items-center gap-0.5">
+                        <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 fill-current">
+                            <path d={EYE_PATH} />
+                        </svg>
+                        {isTwoEyedJack && (
+                            <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 fill-current">
+                                <path d={EYE_PATH} />
+                            </svg>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

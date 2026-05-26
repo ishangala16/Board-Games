@@ -493,6 +493,16 @@ export default function CarcassonneBoard({ gameState, onAction, playerUsername }
                 >
                     －
                 </button>
+                <button
+                    onClick={() => {
+                        setOffset({ x: 0, y: 0 });
+                        setZoom(1);
+                    }}
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-warm-black/80 backdrop-blur border border-white/10 text-white text-base sm:text-lg flex items-center justify-center shadow-lg active:scale-95 transition-transform hover:text-indigo-400 hover:border-indigo-500/30"
+                    title="Re-center Board"
+                >
+                    🎯
+                </button>
             </div>
 
             {/* Current Tile & Controls (Bottom Center Console) */}

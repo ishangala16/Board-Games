@@ -25,6 +25,14 @@ export default function TestPage() {
                             <p className="text-gray-400">Simulate One-Eyed Jack interaction (Removing loose opponent chips).</p>
                         </a>
 
+                        <a href="/test/cards" className="block p-6 bg-warm-black border border-white/10 rounded-xl hover:border-indigo-500 transition-all group">
+                            <h3 className="text-xl font-bold mb-1 flex items-center">
+                                🃏 Card Visuals (Jacks & Suits)
+                                <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-indigo-400">→</span>
+                            </h3>
+                            <p className="text-gray-400">Verify the high-fidelity suit shapes and Jack eye icons in hand and board layouts.</p>
+                        </a>
+
                         <a href="/test/locked" className="block p-6 bg-warm-black border border-white/10 rounded-xl hover:border-indigo-500 transition-all group">
                             <h3 className="text-xl font-bold mb-1 flex items-center">
                                 🔒 Locked Sequences

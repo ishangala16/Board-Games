@@ -14,12 +14,26 @@ export default function Home() {
     const [connected, setConnected] = useState(false);
     const [inLobby, setInLobby] = useState(false);
     const [roomId, setRoomId] = useState("");
+    const [concurrentPlayers, setConcurrentPlayers] = useState(0);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const roomParam = params.get("room");
+            if (roomParam) {
+                setRoomId(roomParam.toUpperCase());
+            }
+        }
+    }, []);
 
     const handleEnter = () => {
         if (username) {
             socketInitializer().then(() => {
                 setInLobby(true);
                 setConnected(true);
+                if (roomId) {
+                    handleJoinGame(roomId);
+                }
             });
         }
     };
@@ -32,18 +46,23 @@ export default function Home() {
             console.log("Connected");
             socket.emit("join_lobby", username);
         });
+
+        socket.on("concurrent_players_update", (count: number) => {
+            setConcurrentPlayers(count);
+        });
     };
 
     const handleJoinGame = (id: string) => {
-        socket.emit("join_room", { roomId: id, username }, (response: any) => {
+        const upperId = id.toUpperCase();
+        socket.emit("join_room", { roomId: upperId, username }, (response: any) => {
             if (response && response.success !== false) {
-                setRoomId(id);
+                setRoomId(upperId);
             } else {
                 alert(response?.error || "Failed to join room");
             }
         });
         // Optimistic update for create_room where callback provides roomId directly
-        if (id && !roomId) setRoomId(id);
+        if (upperId && !roomId) setRoomId(upperId);
     };
 
     const handleLeaveGame = () => {
@@ -51,7 +70,7 @@ export default function Home() {
         socket.emit("join_lobby", username);
     };
 
-    if (roomId) {
+    if (roomId && connected && socket) {
         return <GameRoom socket={socket} username={username} roomId={roomId} onLeave={handleLeaveGame} />;
     }
 
@@ -62,6 +81,24 @@ export default function Home() {
                 <InteractiveBackground />
 
                 <div className="flex-1 flex flex-col items-center overflow-y-auto relative z-10 pt-16 md:pt-24 pb-12 px-4 scroll-smooth">
+                    {/* Top Left User Greeting */}
+                    <div className="absolute top-4 left-4 flex items-center space-x-1.5 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full text-xs font-semibold text-gray-300 shadow-md backdrop-blur-md">
+                        <span>Welcome back,</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4b90ff] to-[#9b51e0] font-bold">
+                            {username}
+                        </span>
+                        <span>!</span>
+                    </div>
+
+                    {/* Top Right Online Counter */}
+                    <div className="absolute top-4 right-4 flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 rounded-full text-xs font-semibold text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.15)] backdrop-blur-md">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        </span>
+                        <span>{concurrentPlayers} player{concurrentPlayers !== 1 ? "s" : ""} online</span>
+                    </div>
+
                     <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#4b90ff] via-[#9b51e0] to-[#ff88a5] drop-shadow-[0_2px_8px_rgba(155,81,224,0.3)] tracking-tight mb-2">Game Lounge</h1>
                     <p className="text-gray-300/80 mb-10 text-lg font-medium tracking-wide">Select a game to start playing or join a room.</p>
                     <Lobby socket={socket} username={username} onJoinGame={handleJoinGame} />

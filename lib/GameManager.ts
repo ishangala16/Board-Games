@@ -160,6 +160,31 @@ export class GameManager {
         return this.games.get(roomId) || null;
     }
 
+    async restartGame(roomId: string) {
+        const game = this.games.get(roomId);
+        if (!game) return null;
+
+        const players = [...game.players];
+        const type = game.type;
+        const isSinglePlayer = players.includes("AI_PLAYER");
+
+        // Filter out AI_PLAYER from manual joins
+        const humanPlayers = players.filter(p => p !== "AI_PLAYER");
+        if (humanPlayers.length === 0) return null;
+
+        const host = humanPlayers[0];
+
+        // Re-create game state
+        await this.createGame(roomId, type, host, isSinglePlayer);
+
+        // Add other human players back
+        for (let i = 1; i < humanPlayers.length; i++) {
+            await this.joinGame(roomId, humanPlayers[i]);
+        }
+
+        return this.games.get(roomId)?.state || null;
+    }
+
     async makeMove(roomId: string, action: any) {
         const game = this.games.get(roomId);
         if (!game) throw new Error("Game not found");

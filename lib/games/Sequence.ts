@@ -80,6 +80,13 @@ export type SequenceAction =
             x: number;
             y: number;
         };
+    }
+    | {
+        type: "DISCARD_DEAD_CARD";
+        payload: {
+            playerId: string;
+            card: string;
+        };
     };
 
 export function sequenceReducer(state: SequenceState, action: SequenceAction): SequenceState {
@@ -203,9 +210,66 @@ export function sequenceReducer(state: SequenceState, action: SequenceAction): S
                 pendingAction: null
             };
         }
+        case "DISCARD_DEAD_CARD": {
+            const { playerId, card } = action.payload;
+            const playerTeam = state.players[playerId];
+
+            if (state.currentTurn !== playerTeam) {
+                throw new Error("Not your turn");
+            }
+
+            const hand = state.hands[playerId];
+            if (!hand.includes(card)) {
+                throw new Error("You don't hold this card");
+            }
+
+            if (!isDeadCard(card, state.board)) {
+                throw new Error("This card is not dead");
+            }
+
+            // Remove card from hand
+            const newHand = [...hand];
+            newHand.splice(newHand.indexOf(card), 1);
+
+            // Draw replacement
+            const newDeck = [...state.deck];
+            if (newDeck.length > 0) {
+                newHand.push(newDeck.pop()!);
+            }
+
+            return {
+                ...state,
+                hands: { ...state.hands, [playerId]: newHand },
+                deck: newDeck,
+                currentTurn: playerTeam === "RED" ? "BLUE" : "RED", // End turn
+                lastMove: null
+            };
+        }
         default:
             return state;
     }
+}
+
+export function isDeadCard(card: string, board: (Team | null)[][]): boolean {
+    if (card === "XX" || card === "JC" || card === "JD" || card === "JS" || card === "JH") {
+        return false; // Jacks are wild / removers, never dead
+    }
+
+    let totalSpaces = 0;
+    let occupiedSpaces = 0;
+
+    for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+            if (BOARD_LAYOUT[y][x] === card) {
+                totalSpaces++;
+                if (board[y][x] !== null) {
+                    occupiedSpaces++;
+                }
+            }
+        }
+    }
+
+    return totalSpaces > 0 && occupiedSpaces === totalSpaces;
 }
 
 // Two-Eyed Jacks: Clubs (C) and Diamonds (D)

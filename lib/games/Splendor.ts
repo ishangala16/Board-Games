@@ -276,15 +276,25 @@ export function splendorReducer(state: SplendorState, action: SplendorAction): S
             const { cardId } = action;
             if (player.reserved.length >= 3) return state; // Limit 3
 
-            // Find in Market
             let card: Card | undefined;
             let foundTier: Tier | null = null;
-            for (const tier of [1, 2, 3] as Tier[]) {
-                const found = newState.market[tier].find((c: Card) => c.id === cardId);
-                if (found) {
-                    card = found;
+
+            if (cardId.startsWith("deck_")) {
+                const tier = parseInt(cardId.split("_")[1], 10) as Tier;
+                if (tier === 1 || tier === 2 || tier === 3) {
+                    if (newState.decks[tier].length === 0) return state; // Empty deck
+                    card = newState.decks[tier].pop();
                     foundTier = tier;
-                    break;
+                }
+            } else {
+                // Find in Market
+                for (const tier of [1, 2, 3] as Tier[]) {
+                    const found = newState.market[tier].find((c: Card) => c.id === cardId);
+                    if (found) {
+                        card = found;
+                        foundTier = tier;
+                        break;
+                    }
                 }
             }
             if (!card || !foundTier) return state;
@@ -297,12 +307,15 @@ export function splendorReducer(state: SplendorState, action: SplendorAction): S
 
             // Move Card
             player.reserved.push(card);
-            newState.market[foundTier] = newState.market[foundTier].filter((c: Card) => c.id !== cardId);
-            if (newState.decks[foundTier].length > 0) {
-                newState.market[foundTier].push(newState.decks[foundTier].pop());
+
+            if (!cardId.startsWith("deck_")) {
+                newState.market[foundTier] = newState.market[foundTier].filter((c: Card) => c.id !== cardId);
+                if (newState.decks[foundTier].length > 0) {
+                    newState.market[foundTier].push(newState.decks[foundTier].pop());
+                }
             }
 
-            actionDescription = "reserved a card";
+            actionDescription = `reserved a Tier ${foundTier} card from the ${cardId.startsWith("deck_") ? "deck" : "market"}`;
             break;
         }
     }

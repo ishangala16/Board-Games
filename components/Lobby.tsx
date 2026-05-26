@@ -20,9 +20,6 @@ export default function Lobby({ socket, username, onJoinGame }: { socket: any, u
 
     return (
         <div className="flex flex-col items-center w-full max-w-5xl p-2 sm:p-4 md:p-8 animate-fade-in">
-            <div className="bg-black/20 px-4 sm:px-8 py-2.5 sm:py-4 rounded-xl sm:rounded-full border border-white/5 mb-6 sm:mb-10 backdrop-blur-md shadow-lg text-center">
-                <h2 className="text-lg md:text-2xl text-white font-medium">Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4b90ff] to-[#9b51e0] font-bold">{username}</span>!</h2>
-            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 w-full">
                 {/* Create Game */}
@@ -164,7 +161,8 @@ export default function Lobby({ socket, username, onJoinGame }: { socket: any, u
                             type="text"
                             placeholder="Enter Room Code"
                             value={roomId}
-                            onChange={(e) => setRoomId(e.target.value)}
+                            onChange={(e) => setRoomId(e.target.value.toUpperCase())}
+                            onKeyDown={(e) => e.key === "Enter" && joinGame()}
                             className="bg-black/50 border-2 border-white/10 rounded-xl p-3 sm:p-4 text-white focus:outline-none focus:border-indigo-500/50 text-center tracking-widest text-base sm:text-lg uppercase transition-colors shadow-inner"
                         />
                         <button

@@ -157,7 +157,7 @@ export default function AzulBoard({ gameState, onAction, playerUsername }: AzulB
                                     onClick={() => isValidTarget ? handlePlaceTiles(i) : undefined}
                                 >
                                     {Array(emptySpaces).fill(0).map((_, j) => (
-                                         <div key={`empty-${j}`} className="w-6 h-6 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded sm:rounded-lg border-2 border-dashed border-white/20 bg-white/5"></div>
+                                        <div key={`empty-${j}`} className="w-6 h-6 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded sm:rounded-lg border-2 border-dashed border-white/20 bg-white/5"></div>
                                     ))}
                                     {line.map((color, j) => (
                                         <div key={`tile-${j}`}>{renderTile(color)}</div>
@@ -173,7 +173,7 @@ export default function AzulBoard({ gameState, onAction, playerUsername }: AzulB
                             row.map((isFilled, j) => {
                                 const color = WALL_PATTERN[i][j];
                                 return (
-                                     <div key={`wall-${i}-${j}`} className={`w-6 h-6 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded sm:rounded-lg border-2 flex items-center justify-center transition-all ${isFilled ? TILE_COLORS[color] : WALL_COLORS[color]}`}>
+                                    <div key={`wall-${i}-${j}`} className={`w-6 h-6 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded sm:rounded-lg border-2 flex items-center justify-center transition-all ${isFilled ? TILE_COLORS[color] : WALL_COLORS[color]}`}>
                                         <div className="w-full h-full rounded sm:rounded-md border-t border-white/30 mix-blend-overlay"></div>
                                     </div>
                                 );
@@ -195,7 +195,7 @@ export default function AzulBoard({ gameState, onAction, playerUsername }: AzulB
                                     {tile ? (
                                         renderTile(tile)
                                     ) : (
-                                         <div className="w-6 h-6 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded sm:rounded-lg border-2 border-dashed border-red-500/30 bg-red-500/5 flex-shrink-0"></div>
+                                        <div className="w-6 h-6 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded sm:rounded-lg border-2 border-dashed border-red-500/30 bg-red-500/5 flex-shrink-0"></div>
                                     )}
                                     <span className="text-[8px] sm:text-[10px] text-red-400 font-bold whitespace-nowrap">{FLOOR_PENALTIES[i]}</span>
                                 </div>

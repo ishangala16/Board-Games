@@ -28,40 +28,64 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
         GOLD: "bg-gradient-to-br from-yellow-400 to-yellow-600 text-yellow-900 border-yellow-300 ring-yellow-200"
     };
 
+    const isSelectionValid = (selection = selectedTokens) => {
+        if (selection.length === 2) {
+            return selection[0] === selection[1] && gameState.bank[selection[0]] >= 4;
+        }
+        if (selection.length === 3) {
+            const distinct = new Set(selection);
+            return distinct.size === 3;
+        }
+        return false;
+    };
+
+    const handleConfirmTokens = () => {
+        if (!isSelectionValid()) return;
+        onAction({ type: "TAKE_TOKENS", playerId: playerUsername, tokens: selectedTokens });
+        setSelectedTokens([]);
+    };
+
     const handleTakeToken = (gem: Gem) => {
         if (!isMyTurn || gem === "GOLD") return;
 
-        let newSelection = [...selectedTokens, gem];
+        let newSelection = [...selectedTokens];
+        const firstColor = newSelection[0];
 
-        // Validation Logic for UI Feedback
-        // Case 1: Taking 2 of same
-        if (newSelection.length === 2 && newSelection[0] === newSelection[1]) {
-            if (gameState.bank[gem] < 4) {
-                alert("Cannot take 2 tokens unless there are 4 available.");
-                setSelectedTokens([]);
-                return;
+        if (newSelection.includes(gem)) {
+            // Already in selection
+            if (newSelection.length === 1) {
+                // If selected once, clicking again can add second one if bank >= 4
+                if (gameState.bank[gem] >= 4) {
+                    newSelection.push(gem);
+                } else {
+                    newSelection = []; // Deselect
+                }
+            } else if (newSelection.length === 2 && newSelection[0] === newSelection[1]) {
+                // Selected twice, click again to deselect
+                newSelection = [];
+            } else {
+                // Part of a distinct set, click to remove
+                newSelection = newSelection.filter(g => g !== gem);
             }
-            // Valid move -> Execute
-            onAction({ type: "TAKE_TOKENS", playerId: playerUsername, tokens: newSelection });
-            setSelectedTokens([]);
-            return;
+        } else {
+            // Not in selection
+            if (newSelection.length === 0) {
+                newSelection.push(gem);
+            } else if (newSelection.length === 1) {
+                if (firstColor === gem) {
+                    // Handled above
+                } else {
+                    newSelection.push(gem);
+                }
+            } else if (newSelection.length === 2) {
+                if (newSelection[0] === newSelection[1]) {
+                    // Already have 2 of same, can't add another color
+                } else {
+                    newSelection.push(gem);
+                }
+            }
         }
 
-        // Case 2: Taking 3 distinct
-        if (newSelection.length === 3) {
-            const distinct = new Set(newSelection);
-            if (distinct.size !== 3) {
-                alert("If taking 3 tokens, they must all be different.");
-                setSelectedTokens([]);
-                return;
-            }
-            // Valid move -> Execute
-            onAction({ type: "TAKE_TOKENS", playerId: playerUsername, tokens: newSelection });
-            setSelectedTokens([]);
-            return;
-        }
-
-        // Just add to selection
         setSelectedTokens(newSelection);
     };
 
@@ -175,7 +199,17 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
                                         <div key={i} className={`w-4 h-4 rounded-full ${GEM_STYLES[t].split(" ")[0]}`} />
                                     ))}
                                 </div>
-                                <button onClick={() => setSelectedTokens([])} className="text-red-400 ml-auto hover:underline">Clear</button>
+                                <div className="flex gap-2 ml-auto items-center">
+                                    <button onClick={() => setSelectedTokens([])} className="text-red-400 hover:underline">Clear</button>
+                                    {isSelectionValid() && (
+                                        <button 
+                                            onClick={handleConfirmTokens} 
+                                            className="px-2 py-0.5 bg-green-600 hover:bg-green-500 text-white rounded font-bold text-[10px] transition-all hover:scale-105 active:scale-95 shadow-md border border-green-400"
+                                        >
+                                            Confirm
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         ) : (
                             isMyTurn && <p>Select tokens, reserve a card, or buy a card.</p>
@@ -223,8 +257,17 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
                     {[3, 2, 1].map((tier) => (
                         <div key={tier} className="flex items-center justify-center gap-1.5 sm:gap-4">
                             {/* Deck */}
-                            <div className={`w-16 h-24 sm:w-24 sm:h-32 rounded sm:rounded-lg border border-white/10 flex flex-col items-center justify-center text-xs sm:text-lg font-semibold select-none shadow-md
-                                ${tier === 3 ? "bg-cyan-900/60" : tier === 2 ? "bg-amber-900/60" : "bg-emerald-900/60"}`}>
+                            <div 
+                                onClick={() => {
+                                    if (isMyTurn && me && me.reserved.length < 3) {
+                                        onAction({ type: "RESERVE_CARD", playerId: playerUsername, cardId: `deck_${tier}` });
+                                    }
+                                }}
+                                className={`w-16 h-24 sm:w-24 sm:h-32 rounded sm:rounded-lg border flex flex-col items-center justify-center text-xs sm:text-lg font-semibold select-none shadow-md transition-all
+                                    ${isMyTurn && me && me.reserved.length < 3 ? "border-indigo-400 hover:scale-105 active:scale-95 cursor-pointer ring-2 ring-indigo-500/20" : "border-white/10"}
+                                    ${tier === 3 ? "bg-cyan-900/60" : tier === 2 ? "bg-amber-900/60" : "bg-emerald-900/60"}`}
+                                title={isMyTurn && me && me.reserved.length < 3 ? `Click to reserve top card of Tier ${tier} Deck` : `Tier ${tier} Deck`}
+                            >
                                 <span className="text-[9px] sm:text-xs text-white/50 uppercase tracking-widest font-sans">Tier {tier}</span>
                                 <span className="text-base sm:text-3xl font-bold font-serif text-white/90 mt-1">{gameState.decks[tier as Tier].length}</span>
                             </div>

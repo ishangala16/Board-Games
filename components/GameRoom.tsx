@@ -11,7 +11,7 @@ import VictoryModal from "./VictoryModal";
 import HowToPlayModal from "./HowToPlayModal";
 import InteractiveBackground from "./InteractiveBackground";
 
-import { BOARD_LAYOUT } from "../lib/games/Sequence";
+import { BOARD_LAYOUT, isDeadCard } from "../lib/games/Sequence";
 
 export default function GameRoom({ socket, username, roomId, onLeave }: { socket: any, username: string, roomId: string, onLeave: () => void }) {
     const [gameState, setGameState] = useState<any>(null);
@@ -19,12 +19,24 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
     const [showChat, setShowChat] = useState(true);
     const [showHelp, setShowHelp] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
+    const [hasAutoClosedChat, setHasAutoClosedChat] = useState(false);
 
     const handleCopyRoomId = () => {
         navigator.clipboard.writeText(roomId).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });
+    };
+
+    const handleCopyInviteLink = () => {
+        if (typeof window !== "undefined") {
+            const inviteUrl = `${window.location.origin}/?room=${roomId}`;
+            navigator.clipboard.writeText(inviteUrl).then(() => {
+                setCopiedLink(true);
+                setTimeout(() => setCopiedLink(false), 2000);
+            });
+        }
     };
 
     const [errorNotification, setErrorNotification] = useState<string | null>(null);
@@ -74,6 +86,13 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
             socket.off("error");
         };
     }, [socket]);
+
+    useEffect(() => {
+        if (gameState?.players && "AI_PLAYER" in gameState.players && !hasAutoClosedChat) {
+            setShowChat(false);
+            setHasAutoClosedChat(true);
+        }
+    }, [gameState, hasAutoClosedChat]);
 
     const handleSequenceMove = (x: number, y: number) => {
         const cardCode = BOARD_LAYOUT[y]?.[x];
@@ -202,6 +221,25 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
                                 </svg>
                             )}
                         </button>
+                        <button
+                            onClick={handleCopyInviteLink}
+                            className="flex items-center space-x-1 sm:space-x-1.5 bg-white/5 hover:bg-white/10 active:bg-white/15 border border-white/10 rounded-md px-1.5 sm:px-2.5 py-0.5 sm:py-1 transition-all group max-w-[100px] sm:max-w-none min-w-0"
+                            title="Copy Invitation Link to share with friends"
+                        >
+                            <span className="text-indigo-300 group-hover:text-indigo-200 font-bold text-xs sm:text-sm truncate">
+                                {copiedLink ? "Link Copied!" : "Invite Link"}
+                            </span>
+                            {!copiedLink ? (
+                                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-400 group-hover:text-indigo-300 transition-colors shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 10-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                            ) : (
+                                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            )}
+                        </button>
                         {isSequence && (
                             <span className={`px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs font-bold shrink-0 ${playerTeam === "BLUE" ? "bg-blue-900 text-blue-200" : "bg-red-900 text-red-200"}`}>
                                 {playerTeam}
@@ -305,12 +343,41 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
                     </div>
 
                     {isSequence && ( // Only show Hand for Sequence
-                        <div className={`h-28 sm:h-40 w-full shrink-0 bg-gradient-to-t from-deep-navy to-transparent overflow-visible transition-transform duration-300 ${shakeHand ? "animate-shake" : ""}`}>
-                            <Hand
-                                cards={myHand}
-                                onCardSelect={(c) => setSelectedCard(c === selectedCard ? null : c)}
-                                selectedCards={selectedCard ? [selectedCard] : []}
-                            />
+                        <div className="w-full shrink-0 relative overflow-visible">
+                            {selectedCard && isDeadCard(selectedCard, gameState?.board || []) && (
+                                <div className="absolute -top-20 left-1/2 -translate-x-1/2 z-30 animate-fade-in flex flex-col items-center gap-1.5 pointer-events-auto">
+                                    <span className="text-[10px] text-red-400 font-bold bg-red-950/80 border border-red-500/30 px-3 py-1 rounded-full uppercase tracking-wider backdrop-blur-md">Dead Card Detected</span>
+                                    {isMyTurn && (
+                                        <button
+                                            onClick={() => {
+                                                socket.emit("make_move", {
+                                                    roomId,
+                                                    action: {
+                                                        type: "DISCARD_DEAD_CARD",
+                                                        payload: {
+                                                            playerId: username,
+                                                            card: selectedCard
+                                                        }
+                                                    }
+                                                });
+                                                setSelectedCard(null);
+                                            }}
+                                            className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white font-extrabold rounded-full shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] active:scale-95 transition-all text-xs uppercase tracking-widest border border-red-400/50"
+                                        >
+                                            🗑️ Discard & Draw
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className={`h-28 sm:h-40 w-full bg-gradient-to-t from-deep-navy to-transparent overflow-visible transition-transform duration-300 ${shakeHand ? "animate-shake" : ""}`}>
+                                <Hand
+                                    cards={myHand}
+                                    onCardSelect={(c) => setSelectedCard(c === selectedCard ? null : c)}
+                                    selectedCards={selectedCard ? [selectedCard] : []}
+                                    deadCards={myHand.filter((c: string) => isDeadCard(c, gameState?.board || []))}
+                                />
+                            </div>
                         </div>
                     )}
                 </div>
@@ -327,7 +394,7 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
             {gameState?.winner && (
                 <VictoryModal
                     winner={gameState.winner}
-                    onReset={() => window.location.reload()} // For MVP, reload to lobby
+                    onReset={() => socket.emit("restart_game", { roomId })}
                 />
             )}
 
