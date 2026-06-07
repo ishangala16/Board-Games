@@ -15,6 +15,7 @@ export default function Home() {
     const [inLobby, setInLobby] = useState(false);
     const [roomId, setRoomId] = useState("");
     const [concurrentPlayers, setConcurrentPlayers] = useState(0);
+    const [gameState, setGameState] = useState<any>(null);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -23,11 +24,56 @@ export default function Home() {
             if (roomParam) {
                 setRoomId(roomParam.toUpperCase());
             }
+
+            const storedUsername = localStorage.getItem("board_game_username");
+            if (storedUsername) {
+                setUsername(storedUsername);
+            }
         }
     }, []);
 
+    useEffect(() => {
+        const handlePopState = (event: PopStateEvent) => {
+            const params = new URLSearchParams(window.location.search);
+            const roomParam = params.get("room");
+            
+            if (roomParam) {
+                const upperRoom = roomParam.toUpperCase();
+                setRoomId(upperRoom);
+                if (connected && socket && username) {
+                    socket.emit("join_room", { roomId: upperRoom, username }, (response: any) => {
+                        if (response && response.success === false) {
+                            alert(response?.error || "Failed to join room");
+                            setRoomId("");
+                            setGameState(null);
+                            const url = new URL(window.location.href);
+                            url.searchParams.delete("room");
+                            window.history.replaceState({}, "", url.toString());
+                        }
+                    });
+                }
+            } else {
+                if (roomId) {
+                    setRoomId("");
+                    setGameState(null);
+                    if (connected && socket) {
+                        socket.emit("join_lobby", username);
+                    }
+                }
+            }
+        };
+
+        window.addEventListener("popstate", handlePopState);
+        return () => {
+            window.removeEventListener("popstate", handlePopState);
+        };
+    }, [roomId, connected, socket, username]);
+
     const handleEnter = () => {
         if (username) {
+            if (typeof window !== "undefined") {
+                localStorage.setItem("board_game_username", username);
+            }
             socketInitializer().then(() => {
                 setInLobby(true);
                 setConnected(true);
@@ -50,6 +96,21 @@ export default function Home() {
         socket.on("concurrent_players_update", (count: number) => {
             setConcurrentPlayers(count);
         });
+
+        socket.on("game_state_update", (state: any) => {
+            console.log("Game State Update (Lounge):", state);
+            setGameState(state);
+        });
+    };
+
+    const updateRoomUrl = (id: string) => {
+        if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            if (url.searchParams.get("room") !== id) {
+                url.searchParams.set("room", id);
+                window.history.pushState({ room: id }, "", url.toString());
+            }
+        }
     };
 
     const handleJoinGame = (id: string) => {
@@ -57,21 +118,33 @@ export default function Home() {
         socket.emit("join_room", { roomId: upperId, username }, (response: any) => {
             if (response && response.success !== false) {
                 setRoomId(upperId);
+                updateRoomUrl(upperId);
             } else {
                 alert(response?.error || "Failed to join room");
             }
         });
         // Optimistic update for create_room where callback provides roomId directly
-        if (upperId && !roomId) setRoomId(upperId);
+        if (upperId && !roomId) {
+            setRoomId(upperId);
+            updateRoomUrl(upperId);
+        }
     };
 
     const handleLeaveGame = () => {
         setRoomId("");
+        setGameState(null);
         socket.emit("join_lobby", username);
+        if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            if (url.searchParams.has("room")) {
+                url.searchParams.delete("room");
+                window.history.replaceState({}, "", url.toString());
+            }
+        }
     };
 
     if (roomId && connected && socket) {
-        return <GameRoom socket={socket} username={username} roomId={roomId} onLeave={handleLeaveGame} />;
+        return <GameRoom socket={socket} username={username} roomId={roomId} onLeave={handleLeaveGame} gameState={gameState} setGameState={setGameState} />;
     }
 
     if (inLobby) {

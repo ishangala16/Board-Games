@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Chat from "./Chat";
 import SequenceBoard from "./games/SequenceBoard";
+import PlayingCard from "./games/PlayingCard";
 import SplendorBoard from "./games/SplendorBoard";
 import CarcassonneBoard from "./games/CarcassonneBoard";
 import AzulBoard from "./games/AzulBoard";
@@ -13,14 +14,35 @@ import InteractiveBackground from "./InteractiveBackground";
 
 import { BOARD_LAYOUT, isDeadCard } from "../lib/games/Sequence";
 
-export default function GameRoom({ socket, username, roomId, onLeave }: { socket: any, username: string, roomId: string, onLeave: () => void }) {
-    const [gameState, setGameState] = useState<any>(null);
+export default function GameRoom({ socket, username, roomId, onLeave, gameState, setGameState }: { socket: any, username: string, roomId: string, onLeave: () => void, gameState: any, setGameState: React.Dispatch<React.SetStateAction<any>> }) {
     const [selectedCard, setSelectedCard] = useState<string | null>(null);
-    const [showChat, setShowChat] = useState(true);
+    const [showChat, setShowChat] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
     const [copied, setCopied] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
     const [hasAutoClosedChat, setHasAutoClosedChat] = useState(false);
+
+    const [localGameState, setLocalGameState] = useState<any>(null);
+    const prevGameStateRef = useRef<any>(null);
+    const [animatingCard, setAnimatingCard] = useState<{
+        card: string;
+        type: "PLAY" | "REMOVE" | "DISCARD";
+        startX: number;
+        startY: number;
+        endX: number;
+        endY: number;
+        active: boolean;
+        opponentName: string;
+    } | null>(null);
+    const [animationProgress, setAnimationProgress] = useState<"start" | "end">("start");
+
+    const getCardName = (code: string) => {
+        if (!code || code === "XX") return "Free Corner";
+        const rank = code.slice(0, -1);
+        const suitCode = code.slice(-1);
+        const suits: Record<string, string> = { H: "♥", D: "♦", C: "♣", S: "♠" };
+        return `${rank}${suits[suitCode] || ""}`;
+    };
 
     const handleCopyRoomId = () => {
         navigator.clipboard.writeText(roomId).then(() => {
@@ -63,26 +85,15 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
         return () => clearTimeout(timer);
     }, [errorNotification]);
 
-    useEffect(() => {
-        if (typeof window !== "undefined" && window.innerWidth < 640) {
-            setShowChat(false);
-        }
-    }, []);
 
     useEffect(() => {
         if (!socket) return;
-
-        socket.on("game_state_update", (state: any) => {
-            console.log("Game State Update:", state);
-            setGameState(state);
-        });
 
         socket.on("error", (errorMessage: string) => {
             triggerValidationError(errorMessage);
         });
 
         return () => {
-            socket.off("game_state_update");
             socket.off("error");
         };
     }, [socket]);
@@ -93,6 +104,82 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
             setHasAutoClosedChat(true);
         }
     }, [gameState, hasAutoClosedChat]);
+
+    useEffect(() => {
+        if (!gameState) return;
+
+        const isSplendor = gameState?.market !== undefined;
+        const isAzul = gameState?.factories !== undefined;
+        const isCarcassonne = gameState?.placedMeeples !== undefined || gameState?.currentTileId !== undefined;
+        const isSequence = (gameState?.currentTurn === "BLUE" || gameState?.currentTurn === "RED") && !isSplendor && !isCarcassonne && !isAzul;
+
+        if (!localGameState) {
+            setLocalGameState(gameState);
+            prevGameStateRef.current = gameState;
+            return;
+        }
+
+        const prev = prevGameStateRef.current;
+
+        if (isSequence && prev && gameState.lastAction && gameState.lastAction.playerId !== username) {
+            const isNewAction = !prev.lastAction ||
+                prev.lastAction.playerId !== gameState.lastAction.playerId ||
+                prev.lastAction.type !== gameState.lastAction.type ||
+                prev.lastAction.card !== gameState.lastAction.card ||
+                prev.lastAction.x !== gameState.lastAction.x ||
+                prev.lastAction.y !== gameState.lastAction.y;
+
+            if (isNewAction) {
+                const action = gameState.lastAction;
+                const opponentName = action.playerId === "AI_PLAYER" ? "AI Player" : action.playerId || "Opponent";
+                
+                const startX = typeof window !== "undefined" ? window.innerWidth / 2 : 500;
+                const startY = 80;
+
+                let endX = startX;
+                let endY = typeof window !== "undefined" ? window.innerHeight / 2 : 500;
+
+                if (action.x !== undefined && action.y !== undefined) {
+                    const cellElement = document.getElementById(`sequence-cell-${action.x}-${action.y}`);
+                    if (cellElement) {
+                        const rect = cellElement.getBoundingClientRect();
+                        endX = rect.left + rect.width / 2;
+                        endY = rect.top + rect.height / 2;
+                    }
+                }
+
+                setAnimatingCard({
+                    card: action.card || "",
+                    type: action.type === "PLAY_CARD" ? "PLAY" : action.type === "REMOVE_CHIP" ? "REMOVE" : "DISCARD",
+                    startX,
+                    startY,
+                    endX,
+                    endY,
+                    active: true,
+                    opponentName
+                });
+                setAnimationProgress("start");
+
+                const animTimer = setTimeout(() => {
+                    setAnimationProgress("end");
+                }, 50);
+
+                const stateTimer = setTimeout(() => {
+                    setLocalGameState(gameState);
+                    setAnimatingCard(null);
+                }, 900);
+
+                prevGameStateRef.current = gameState;
+                return () => {
+                    clearTimeout(animTimer);
+                    clearTimeout(stateTimer);
+                };
+            }
+        }
+
+        setLocalGameState(gameState);
+        prevGameStateRef.current = gameState;
+    }, [gameState, username, localGameState]);
 
     const handleSequenceMove = (x: number, y: number) => {
         const cardCode = BOARD_LAYOUT[y]?.[x];
@@ -167,6 +254,7 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
         socket.emit("make_move", { roomId, action });
     };
 
+    const currentRenderState = localGameState || gameState;
     const myHand = gameState?.hands?.[username] || [];
     const playerTeam = gameState?.players?.[username]; // Only for Sequence (string like "BLUE")
 
@@ -180,13 +268,13 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
 
     const isMyTurn = (isSplendor || isCarcassonne || isAzul)
         ? gameState.turnOrder?.[gameState.currentTurnIndex] === username
-        : gameState?.currentTurn === playerTeam;
+        : currentRenderState?.currentTurn === playerTeam;
 
     return (
         <div className="flex bg-gradient-to-br from-[#080b11] via-[#121824] to-[#1a1128] animate-gradient h-screen w-full overflow-hidden relative">
             <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none"></div>
             <InteractiveBackground />
-            
+
             {/* Mobile Chat Backdrop Overlay */}
             {showChat && (
                 <button
@@ -268,11 +356,10 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
                         </div>
                         <button
                             onClick={() => setShowChat(!showChat)}
-                            className={`px-2 py-1 sm:px-3 sm:py-1 rounded text-[10px] sm:text-xs font-semibold border flex items-center gap-1 sm:gap-1.5 transition-all shrink-0 ${
-                                showChat
+                            className={`px-2 py-1 sm:px-3 sm:py-1 rounded text-[10px] sm:text-xs font-semibold border flex items-center gap-1 sm:gap-1.5 transition-all shrink-0 ${showChat
                                     ? "bg-[#9b51e0]/20 text-[#a855f7] border-[#9b51e0]/40 shadow-[0_0_12px_rgba(155,81,224,0.25)]"
                                     : "border-white/10 text-gray-400 hover:text-white hover:border-white/30 bg-white/5"
-                            }`}
+                                }`}
                             title={showChat ? "Close Chat Panel" : "Open Chat Panel"}
                         >
                             <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -281,8 +368,8 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
                             </svg>
                             <span className="hidden sm:inline">Chat</span>
                         </button>
-                        <button 
-                            onClick={onLeave} 
+                        <button
+                            onClick={onLeave}
                             className="text-[10px] sm:text-xs text-red-400 hover:text-red-300 border border-red-900/50 px-2 sm:px-3 py-1 rounded shrink-0 transition-all hover:bg-red-950/20"
                         >
                             Leave
@@ -295,8 +382,8 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
                         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-red-950/90 border border-red-500/50 text-red-200 px-5 py-2.5 rounded-xl shadow-[0_4px_24px_rgba(239,68,68,0.5)] flex items-center space-x-3 animate-fade-in backdrop-blur-md max-w-sm sm:max-w-md pointer-events-auto">
                             <span className="text-red-400 text-lg leading-none">⚠️</span>
                             <span className="text-xs sm:text-sm font-medium tracking-wide">{errorNotification}</span>
-                            <button 
-                                onClick={() => setErrorNotification(null)} 
+                            <button
+                                onClick={() => setErrorNotification(null)}
                                 className="text-red-400 hover:text-white font-bold ml-2 transition-colors focus:outline-none"
                             >
                                 ×
@@ -331,12 +418,12 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
                             </div>
                         ) : (
                             <div className="shadow-2xl max-w-full max-h-full overflow-auto">
-                                <SequenceBoard 
-                                    gameState={gameState} 
-                                    onCellClick={handleSequenceMove} 
-                                    playerTeam={playerTeam} 
-                                    selectedCard={selectedCard} 
-                                    shakingCell={shakingCell} 
+                                <SequenceBoard
+                                    gameState={currentRenderState}
+                                    onCellClick={handleSequenceMove}
+                                    playerTeam={playerTeam}
+                                    selectedCard={selectedCard}
+                                    shakingCell={shakingCell}
                                 />
                             </div>
                         )}
@@ -344,7 +431,7 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
 
                     {isSequence && ( // Only show Hand for Sequence
                         <div className="w-full shrink-0 relative overflow-visible">
-                            {selectedCard && isDeadCard(selectedCard, gameState?.board || []) && (
+                            {selectedCard && isDeadCard(selectedCard, currentRenderState?.board || []) && (
                                 <div className="absolute -top-20 left-1/2 -translate-x-1/2 z-30 animate-fade-in flex flex-col items-center gap-1.5 pointer-events-auto">
                                     <span className="text-[10px] text-red-400 font-bold bg-red-950/80 border border-red-500/30 px-3 py-1 rounded-full uppercase tracking-wider backdrop-blur-md">Dead Card Detected</span>
                                     {isMyTurn && (
@@ -375,7 +462,7 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
                                     cards={myHand}
                                     onCardSelect={(c) => setSelectedCard(c === selectedCard ? null : c)}
                                     selectedCards={selectedCard ? [selectedCard] : []}
-                                    deadCards={myHand.filter((c: string) => isDeadCard(c, gameState?.board || []))}
+                                    deadCards={myHand.filter((c: string) => isDeadCard(c, currentRenderState?.board || []))}
                                 />
                             </div>
                         </div>
@@ -384,11 +471,13 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
             </div>
 
             {/* Intimate Sidebar */}
-            <div className={`border-l border-white/10 bg-warm-black shadow-xl transition-all duration-300 ease-in-out z-50 absolute right-0 top-0 h-full sm:relative sm:shrink-0 ${showChat ? "w-80 max-w-[85vw] translate-x-0 opacity-100" : "w-0 translate-x-full border-none opacity-0 pointer-events-none sm:pointer-events-auto"}`}>
-                <div className="w-80 max-w-[85vw] h-full"> {/* Inner container to prevent content squashing */}
-                    <Chat socket={socket} username={username} room={roomId} onClose={() => setShowChat(false)} />
+            {showChat && (
+                <div className="border-l border-white/10 bg-warm-black shadow-xl z-50 absolute right-0 top-0 h-full w-80 max-w-[85vw] sm:relative sm:shrink-0 animate-fade-in overflow-hidden">
+                    <div className="w-80 max-w-[85vw] h-full"> {/* Inner container to prevent content squashing */}
+                        <Chat socket={socket} username={username} room={roomId} onClose={() => setShowChat(false)} />
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Victory Modal */}
             {gameState?.winner && (
@@ -404,6 +493,54 @@ export default function GameRoom({ socket, username, roomId, onLeave }: { socket
                     onClose={() => setShowHelp(false)}
                     gameType={isSplendor ? "SPLENDOR" : isCarcassonne ? "CARCASSONNE" : isAzul ? "AZUL" : "SEQUENCE"}
                 />
+            )}
+
+            {/* Opponent Playing Animation Overlay */}
+            {animatingCard && animatingCard.active && (
+                <>
+                    {/* Announcement Banner */}
+                    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#121824]/95 border border-indigo-500/50 text-white px-6 py-3 rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)] flex items-center space-x-3 animate-fade-in backdrop-blur-md">
+                        <span className="flex h-3 w-3 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                        </span>
+                        <span className="text-xs sm:text-sm font-semibold tracking-wide">
+                            <span className="text-indigo-400 font-extrabold mr-1">{animatingCard.opponentName}</span>
+                            {animatingCard.type === "PLAY" && (
+                                <>played <span className="text-yellow-400 font-extrabold ml-1">{getCardName(animatingCard.card)}</span></>
+                            )}
+                            {animatingCard.type === "REMOVE" && (
+                                <><span className="text-red-400 font-extrabold mr-1">removed</span> a chip!</>
+                            )}
+                            {animatingCard.type === "DISCARD" && (
+                                <>discarded <span className="text-gray-400 font-extrabold ml-1">{getCardName(animatingCard.card)}</span></>
+                            )}
+                        </span>
+                    </div>
+
+                    {/* Flying Item Overlay */}
+                    <div
+                        className="fixed z-50 pointer-events-none transition-all duration-700 ease-out"
+                        style={{
+                            left: animationProgress === "start" ? `${animatingCard.startX}px` : `${animatingCard.endX}px`,
+                            top: animationProgress === "start" ? `${animatingCard.startY}px` : `${animatingCard.endY}px`,
+                            transform: animationProgress === "start"
+                                ? "translate(-50%, -50%) scale(1.5) rotate(0deg)"
+                                : "translate(-50%, -50%) scale(0.3) rotate(720deg)",
+                            opacity: animationProgress === "start" ? 0.9 : 0,
+                        }}
+                    >
+                        {animatingCard.type === "REMOVE" ? (
+                            <div className="w-16 h-16 rounded-full border-4 border-dashed border-red-500 flex items-center justify-center bg-red-950/40 shadow-[0_0_20px_rgba(239,68,68,0.8)] animate-spin">
+                                <div className="w-6 h-6 rounded-full bg-red-600"></div>
+                            </div>
+                        ) : (
+                            <div className="shadow-2xl rounded-xl overflow-hidden bg-white">
+                                <PlayingCard code={animatingCard.card} />
+                            </div>
+                        )}
+                    </div>
+                </>
             )}
         </div>
     );

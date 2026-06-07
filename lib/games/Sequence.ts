@@ -9,6 +9,13 @@ export interface SequenceState {
     hands: Record<string, string[]>; // card codes e.g. "JD", "10H"
     deck: string[];
     lastMove: { x: number, y: number } | null;
+    lastAction?: {
+        type: "PLAY_CARD" | "REMOVE_CHIP" | "DISCARD_DEAD_CARD";
+        playerId: string;
+        card?: string;
+        x?: number;
+        y?: number;
+    } | null;
     pendingAction: { type: "REMOVE_CHIP", playerId: string } | null;
 }
 
@@ -43,6 +50,7 @@ export const INITIAL_STATE: SequenceState = {
     hands: {},
     deck: createDeck(),
     lastMove: null,
+    lastAction: null,
     pendingAction: null
 };
 
@@ -116,7 +124,12 @@ export function sequenceReducer(state: SequenceState, action: SequenceAction): S
                     ...state,
                     hands: { ...state.hands, [playerId]: newHand },
                     pendingAction: { type: "REMOVE_CHIP", playerId },
-                    lastMove: null // No board move yet
+                    lastMove: null, // No board move yet
+                    lastAction: {
+                        type: "PLAY_CARD",
+                        playerId,
+                        card
+                    }
                 };
             }
 
@@ -170,6 +183,13 @@ export function sequenceReducer(state: SequenceState, action: SequenceAction): S
                 deck: newDeck,
                 currentTurn: playerTeam === "RED" ? "BLUE" : "RED",
                 lastMove: { x, y },
+                lastAction: {
+                    type: "PLAY_CARD",
+                    playerId,
+                    card,
+                    x,
+                    y
+                },
                 winner
             };
         }
@@ -207,6 +227,12 @@ export function sequenceReducer(state: SequenceState, action: SequenceAction): S
                 hands: { ...state.hands, [playerId]: newHand },
                 deck: newDeck,
                 currentTurn: playerTeam === "RED" ? "BLUE" : "RED", // End turn
+                lastAction: {
+                    type: "REMOVE_CHIP",
+                    playerId,
+                    x,
+                    y
+                },
                 pendingAction: null
             };
         }
@@ -242,7 +268,12 @@ export function sequenceReducer(state: SequenceState, action: SequenceAction): S
                 hands: { ...state.hands, [playerId]: newHand },
                 deck: newDeck,
                 currentTurn: playerTeam === "RED" ? "BLUE" : "RED", // End turn
-                lastMove: null
+                lastMove: null,
+                lastAction: {
+                    type: "DISCARD_DEAD_CARD",
+                    playerId,
+                    card
+                }
             };
         }
         default:

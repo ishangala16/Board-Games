@@ -58,6 +58,7 @@ export default function SequenceBoard({ gameState, onCellClick, playerTeam, sele
                     return (
                         <div
                             key={`${x}-${y}`}
+                            id={`sequence-cell-${x}-${y}`}
                             className={`
                                 w-[8.5vw] h-[12vw] sm:w-[6vmin] sm:h-[8.5vmin] md:w-[4vw] md:h-[5.6vw] lg:w-[4.2vh] lg:h-[6vh] 
                                 relative transition-all
