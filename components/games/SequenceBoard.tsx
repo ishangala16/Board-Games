@@ -19,7 +19,7 @@ const BOARD_LAYOUT = [
     ["XX", "AD", "KD", "QD", "10D", "9D", "8D", "7D", "6D", "XX"]
 ];
 
-export default function SequenceBoard({ gameState, onCellClick, playerTeam, selectedCard = null, shakingCell = null }: { gameState: any, onCellClick: (x: number, y: number) => void, playerTeam: string, selectedCard?: string | null, shakingCell?: { x: number, y: number } | null }) {
+export default function SequenceBoard({ gameState, onCellClick, playerTeam, username = "", selectedCard = null, shakingCell = null }: { gameState: any, onCellClick: (x: number, y: number) => void, playerTeam: string, username?: string, selectedCard?: string | null, shakingCell?: { x: number, y: number } | null }) {
     if (!gameState) return <div className="text-white">Waiting for game state...</div>;
 
     const isTwoEyedJack = (c: string) => c === "JC" || c === "JD";
@@ -73,10 +73,9 @@ export default function SequenceBoard({ gameState, onCellClick, playerTeam, sele
                             {cell && (
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                                     <div className={`
-                                        w-[55%] aspect-square rounded-full shadow-md border-2 border-white
+                                        w-3/4 h-3/4 max-w-[48px] max-h-[48px] rounded-full shadow-lg border-2 border-white/20
                                         ${cell === "BLUE" ? "bg-blue-600 shadow-blue-500/50" : "bg-red-600 shadow-red-500/50"}
-                                        animate-bounce-in
-                                    `} />
+                                    `}></div>
                                 </div>
                             )}
 

@@ -116,20 +116,49 @@ export function sequenceReducer(state: SequenceState, action: SequenceAction): S
 
             // --- ONE-EYED JACK (REMOVE CHIP) ---
             if (isOneEyedJack(card)) {
-                // Remove card from hand immediately
+                if (x === undefined || y === undefined) {
+                    throw new Error("No target selected for removal");
+                }
+
+                // Validate Target: Must be occupied by OPPONENT
+                const targetCell = state.board[y][x];
+                if (!targetCell || targetCell === playerTeam) {
+                    throw new Error("Target cell must be occupied by an opponent's chip");
+                }
+
+                // Validate Locked Chips (Cannot remove from completed sequence)
+                if (isPartOfSequence(state.board, x, y, targetCell)) {
+                    throw new Error("Chip is part of a locked sequence");
+                }
+
+                // Execute removal
+                const newBoard = state.board.map(row => [...row]);
+                newBoard[y][x] = null;
+
+                // Remove card from hand
                 const newHand = [...hand];
                 newHand.splice(newHand.indexOf(card), 1);
 
+                // Draw new card
+                const newDeck = [...state.deck];
+                if (newDeck.length > 0) {
+                    newHand.push(newDeck.pop()!);
+                }
+
                 return {
                     ...state,
+                    board: newBoard,
                     hands: { ...state.hands, [playerId]: newHand },
-                    pendingAction: { type: "REMOVE_CHIP", playerId },
-                    lastMove: null, // No board move yet
+                    deck: newDeck,
+                    currentTurn: playerTeam === "RED" ? "BLUE" : "RED", // End turn
+                    lastMove: null,
                     lastAction: {
-                        type: "PLAY_CARD",
+                        type: "REMOVE_CHIP",
                         playerId,
-                        card
-                    }
+                        x,
+                        y
+                    },
+                    pendingAction: null
                 };
             }
 

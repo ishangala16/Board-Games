@@ -137,11 +137,11 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                 const opponentName = action.playerId === "AI_PLAYER" ? "AI Player" : action.playerId || "Opponent";
                 const opponentTeam = gameState.players?.[action.playerId] || (playerTeam === "BLUE" ? "RED" : "BLUE");
                 
-                const isPlay = action.type === "PLAY_CARD" && !(action.card === "JS" || action.card === "JH");
-                const isRemove = action.type === "REMOVE_CHIP";
+                const startX = typeof window !== "undefined" ? window.innerWidth / 2 : 500;
+                const startY = 80;
 
-                let targetX = typeof window !== "undefined" ? window.innerWidth / 2 : 500;
-                let targetY = typeof window !== "undefined" ? window.innerHeight / 2 : 500;
+                let endX = startX;
+                let endY = typeof window !== "undefined" ? window.innerHeight / 2 : 500;
                 let targetWidth = 40;
                 let targetHeight = 40;
 
@@ -149,21 +149,16 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                     const cellElement = document.getElementById(`sequence-cell-${action.x}-${action.y}`);
                     if (cellElement) {
                         const rect = cellElement.getBoundingClientRect();
-                        targetX = rect.left + rect.width / 2;
-                        targetY = rect.top + rect.height / 2;
-                        targetWidth = rect.width * 0.55;
-                        targetHeight = rect.width * 0.55;
+                        endX = rect.left + rect.width / 2;
+                        endY = rect.top + rect.height / 2;
+                        targetWidth = Math.min(rect.width * 0.75, 48);
+                        targetHeight = Math.min(rect.height * 0.75, 48);
                     }
                 }
 
-                const startX = isPlay || isRemove ? targetX : (typeof window !== "undefined" ? window.innerWidth / 2 : 500);
-                const startY = isPlay ? targetY - 25 : (isRemove ? targetY : 80);
-                const endX = isPlay || isRemove ? targetX : startX;
-                const endY = isPlay || isRemove ? targetY : startY;
-
                 setAnimatingCard({
                     card: action.card || "",
-                    type: isPlay ? "PLAY" : (isRemove ? "REMOVE" : "DISCARD"),
+                    type: action.type === "PLAY_CARD" ? "PLAY" : action.type === "REMOVE_CHIP" ? "REMOVE" : "DISCARD",
                     startX,
                     startY,
                     endX,
@@ -180,12 +175,10 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                     setAnimationProgress("end");
                 }, 50);
 
-                const animDuration = isRemove ? 700 : 400;
-
                 const stateTimer = setTimeout(() => {
                     setLocalGameState(gameState);
                     setAnimatingCard(null);
-                }, animDuration);
+                }, 600);
 
                 prevGameStateRef.current = gameState;
                 return () => {
@@ -237,32 +230,6 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                 triggerValidationError("Select an opponent's chip to remove!", { x, y });
                 return;
             }
-            // Sequentially emit PLAY_CARD to discard the Jack, and REMOVE_CHIP to remove the chip in a single board interaction
-            socket.emit("make_move", {
-                roomId,
-                action: {
-                    type: "PLAY_CARD",
-                    payload: {
-                        playerId: username,
-                        card: selectedCard,
-                        x,
-                        y
-                    }
-                }
-            });
-            socket.emit("make_move", {
-                roomId,
-                action: {
-                    type: "REMOVE_CHIP",
-                    payload: {
-                        playerId: username,
-                        x,
-                        y
-                    }
-                }
-            });
-            setSelectedCard(null);
-            return;
         } else {
             if (cell !== null) {
                 triggerValidationError("Space is occupied!", { x, y });
@@ -466,6 +433,7 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                                     gameState={currentRenderState}
                                     onCellClick={handleSequenceMove}
                                     playerTeam={playerTeam}
+                                    username={username}
                                     selectedCard={selectedCard}
                                     shakingCell={shakingCell}
                                 />
@@ -541,54 +509,28 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
             {/* Opponent Playing Flying Chip Overlay (No Popup) */}
             {animatingCard && animatingCard.active && (
                 <div
-                    className="fixed z-50 pointer-events-none"
-                    style={{
+                    className={`fixed z-50 pointer-events-none ${animatingCard.type === "PLAY" ? "animate-chip-fall" : animatingCard.type === "REMOVE" ? "animate-chip-remove" : ""}`}
+                    style={animatingCard.type === "PLAY" || animatingCard.type === "REMOVE" ? {
+                        left: `${animatingCard.endX}px`,
+                        top: `${animatingCard.endY}px`,
+                        width: `${animatingCard.width}px`,
+                        height: `${animatingCard.height}px`,
+                    } : {
                         left: animationProgress === "start" ? `${animatingCard.startX}px` : `${animatingCard.endX}px`,
                         top: animationProgress === "start" ? `${animatingCard.startY}px` : `${animatingCard.endY}px`,
                         width: animationProgress === "start" ? `${animatingCard.width * 1.5}px` : `${animatingCard.width}px`,
                         height: animationProgress === "start" ? `${animatingCard.height * 1.5}px` : `${animatingCard.height}px`,
                         transform: "translate(-50%, -50%)",
                         opacity: 1,
-                        transition: "left 350ms ease-out, top 350ms ease-out, width 350ms ease-out, height 350ms ease-out",
+                        transition: "left 600ms ease-out, top 600ms ease-out, width 600ms ease-out, height 600ms ease-out",
                     }}
                 >
                     {animatingCard.type === "REMOVE" ? (
-                        <div className="relative w-16 h-16 flex items-center justify-center pointer-events-none">
-                            {/* Orbital Targeting Reticle (Locks on from 0ms to 350ms) */}
-                            <div className="absolute w-12 h-12 border-2 border-red-500/80 rounded-full animate-target-lock flex items-center justify-center">
-                                {/* Crosshair lines */}
-                                <div className="absolute top-0 bottom-0 w-[1px] bg-red-400/50" />
-                                <div className="absolute left-0 right-0 h-[1px] bg-red-400/50" />
-                            </div>
-
-                            {/* Tech bracket corners */}
-                            <div className="absolute w-10 h-10 animate-target-lock flex flex-col justify-between">
-                                <div className="flex justify-between">
-                                    <div className="w-2 h-2 border-t-2 border-l-2 border-red-500" />
-                                    <div className="w-2 h-2 border-t-2 border-r-2 border-red-500" />
-                                </div>
-                                <div className="flex justify-between">
-                                    <div className="w-2 h-2 border-b-2 border-l-2 border-red-500" />
-                                    <div className="w-2 h-2 border-b-2 border-r-2 border-red-500" />
-                                </div>
-                            </div>
-
-                            {/* Center target dot */}
-                            <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping" />
-
-                            {/* Satellite Laser Strike from above (Fires at 300ms) */}
-                            <div className="absolute bottom-[50%] left-[50%] -translate-x-[50%] w-2 bg-red-500 shadow-[0_0_15px_#ef4444] animate-laser-beam origin-bottom" />
-
-                            {/* Expanding energy shockwave on laser impact */}
-                            <div className="absolute w-12 h-12 border border-red-500 rounded-full opacity-0 animate-shockwave" />
-
-                            {/* Mock Dissolving Chip Overlay (duplicates the chip being removed, dissolves on impact) */}
-                            <div className={`absolute w-[55%] aspect-square rounded-full border-2 border-white shadow-lg animate-dissolve
-                                ${animatingCard.team === "BLUE" ? "bg-red-600 shadow-red-500/50" : "bg-blue-600 shadow-blue-500/50"}`}
-                            />
+                        <div className="w-full h-full rounded-full border-2 border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)] bg-red-950/60 flex items-center justify-center">
+                            <span className="text-red-500 font-extrabold text-sm sm:text-base leading-none">×</span>
                         </div>
                     ) : animatingCard.type === "PLAY" ? (
-                        <div className={`w-full h-full rounded-full border-2 border-white shadow-lg
+                        <div className={`w-full h-full rounded-full border-2 border-white/20 shadow-lg
                             ${animatingCard.team === "BLUE" ? "bg-blue-600 shadow-blue-500/50" : "bg-red-600 shadow-red-500/50"}`}
                         />
                     ) : (
