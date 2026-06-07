@@ -73,10 +73,10 @@ export default function SequenceBoard({ gameState, onCellClick, playerTeam, sele
                             {cell && (
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                                     <div className={`
-                                        w-3/4 h-3/4 max-w-[48px] max-h-[48px] rounded-full shadow-lg border-2 border-white/20
+                                        w-[55%] aspect-square rounded-full shadow-md border-2 border-white
                                         ${cell === "BLUE" ? "bg-blue-600 shadow-blue-500/50" : "bg-red-600 shadow-red-500/50"}
                                         animate-bounce-in
-                                    `}></div>
+                                    `} />
                                 </div>
                             )}
 

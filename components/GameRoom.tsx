@@ -31,6 +31,9 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
         startY: number;
         endX: number;
         endY: number;
+        width: number;
+        height: number;
+        team?: string;
         active: boolean;
         opponentName: string;
     } | null>(null);
@@ -132,29 +135,42 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
             if (isNewAction) {
                 const action = gameState.lastAction;
                 const opponentName = action.playerId === "AI_PLAYER" ? "AI Player" : action.playerId || "Opponent";
+                const opponentTeam = gameState.players?.[action.playerId] || (playerTeam === "BLUE" ? "RED" : "BLUE");
                 
-                const startX = typeof window !== "undefined" ? window.innerWidth / 2 : 500;
-                const startY = 80;
+                const isPlay = action.type === "PLAY_CARD" && !(action.card === "JS" || action.card === "JH");
+                const isRemove = action.type === "REMOVE_CHIP";
 
-                let endX = startX;
-                let endY = typeof window !== "undefined" ? window.innerHeight / 2 : 500;
+                let targetX = typeof window !== "undefined" ? window.innerWidth / 2 : 500;
+                let targetY = typeof window !== "undefined" ? window.innerHeight / 2 : 500;
+                let targetWidth = 40;
+                let targetHeight = 40;
 
                 if (action.x !== undefined && action.y !== undefined) {
                     const cellElement = document.getElementById(`sequence-cell-${action.x}-${action.y}`);
                     if (cellElement) {
                         const rect = cellElement.getBoundingClientRect();
-                        endX = rect.left + rect.width / 2;
-                        endY = rect.top + rect.height / 2;
+                        targetX = rect.left + rect.width / 2;
+                        targetY = rect.top + rect.height / 2;
+                        targetWidth = rect.width * 0.55;
+                        targetHeight = rect.width * 0.55;
                     }
                 }
 
+                const startX = isPlay || isRemove ? targetX : (typeof window !== "undefined" ? window.innerWidth / 2 : 500);
+                const startY = isPlay ? targetY - 25 : (isRemove ? targetY : 80);
+                const endX = isPlay || isRemove ? targetX : startX;
+                const endY = isPlay || isRemove ? targetY : startY;
+
                 setAnimatingCard({
                     card: action.card || "",
-                    type: action.type === "PLAY_CARD" ? "PLAY" : action.type === "REMOVE_CHIP" ? "REMOVE" : "DISCARD",
+                    type: isPlay ? "PLAY" : (isRemove ? "REMOVE" : "DISCARD"),
                     startX,
                     startY,
                     endX,
                     endY,
+                    width: targetWidth,
+                    height: targetHeight,
+                    team: opponentTeam,
                     active: true,
                     opponentName
                 });
@@ -164,10 +180,12 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                     setAnimationProgress("end");
                 }, 50);
 
+                const animDuration = isRemove ? 700 : 400;
+
                 const stateTimer = setTimeout(() => {
                     setLocalGameState(gameState);
                     setAnimatingCard(null);
-                }, 900);
+                }, animDuration);
 
                 prevGameStateRef.current = gameState;
                 return () => {
@@ -219,6 +237,32 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                 triggerValidationError("Select an opponent's chip to remove!", { x, y });
                 return;
             }
+            // Sequentially emit PLAY_CARD to discard the Jack, and REMOVE_CHIP to remove the chip in a single board interaction
+            socket.emit("make_move", {
+                roomId,
+                action: {
+                    type: "PLAY_CARD",
+                    payload: {
+                        playerId: username,
+                        card: selectedCard,
+                        x,
+                        y
+                    }
+                }
+            });
+            socket.emit("make_move", {
+                roomId,
+                action: {
+                    type: "REMOVE_CHIP",
+                    payload: {
+                        playerId: username,
+                        x,
+                        y
+                    }
+                }
+            });
+            setSelectedCard(null);
+            return;
         } else {
             if (cell !== null) {
                 triggerValidationError("Space is occupied!", { x, y });
@@ -494,53 +538,65 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                     gameType={isSplendor ? "SPLENDOR" : isCarcassonne ? "CARCASSONNE" : isAzul ? "AZUL" : "SEQUENCE"}
                 />
             )}
-
-            {/* Opponent Playing Animation Overlay */}
+            {/* Opponent Playing Flying Chip Overlay (No Popup) */}
             {animatingCard && animatingCard.active && (
-                <>
-                    {/* Announcement Banner */}
-                    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#121824]/95 border border-indigo-500/50 text-white px-6 py-3 rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)] flex items-center space-x-3 animate-fade-in backdrop-blur-md">
-                        <span className="flex h-3 w-3 relative">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
-                        </span>
-                        <span className="text-xs sm:text-sm font-semibold tracking-wide">
-                            <span className="text-indigo-400 font-extrabold mr-1">{animatingCard.opponentName}</span>
-                            {animatingCard.type === "PLAY" && (
-                                <>played <span className="text-yellow-400 font-extrabold ml-1">{getCardName(animatingCard.card)}</span></>
-                            )}
-                            {animatingCard.type === "REMOVE" && (
-                                <><span className="text-red-400 font-extrabold mr-1">removed</span> a chip!</>
-                            )}
-                            {animatingCard.type === "DISCARD" && (
-                                <>discarded <span className="text-gray-400 font-extrabold ml-1">{getCardName(animatingCard.card)}</span></>
-                            )}
-                        </span>
-                    </div>
+                <div
+                    className="fixed z-50 pointer-events-none"
+                    style={{
+                        left: animationProgress === "start" ? `${animatingCard.startX}px` : `${animatingCard.endX}px`,
+                        top: animationProgress === "start" ? `${animatingCard.startY}px` : `${animatingCard.endY}px`,
+                        width: animationProgress === "start" ? `${animatingCard.width * 1.5}px` : `${animatingCard.width}px`,
+                        height: animationProgress === "start" ? `${animatingCard.height * 1.5}px` : `${animatingCard.height}px`,
+                        transform: "translate(-50%, -50%)",
+                        opacity: 1,
+                        transition: "left 350ms ease-out, top 350ms ease-out, width 350ms ease-out, height 350ms ease-out",
+                    }}
+                >
+                    {animatingCard.type === "REMOVE" ? (
+                        <div className="relative w-16 h-16 flex items-center justify-center pointer-events-none">
+                            {/* Orbital Targeting Reticle (Locks on from 0ms to 350ms) */}
+                            <div className="absolute w-12 h-12 border-2 border-red-500/80 rounded-full animate-target-lock flex items-center justify-center">
+                                {/* Crosshair lines */}
+                                <div className="absolute top-0 bottom-0 w-[1px] bg-red-400/50" />
+                                <div className="absolute left-0 right-0 h-[1px] bg-red-400/50" />
+                            </div>
 
-                    {/* Flying Item Overlay */}
-                    <div
-                        className="fixed z-50 pointer-events-none transition-all duration-700 ease-out"
-                        style={{
-                            left: animationProgress === "start" ? `${animatingCard.startX}px` : `${animatingCard.endX}px`,
-                            top: animationProgress === "start" ? `${animatingCard.startY}px` : `${animatingCard.endY}px`,
-                            transform: animationProgress === "start"
-                                ? "translate(-50%, -50%) scale(1.5) rotate(0deg)"
-                                : "translate(-50%, -50%) scale(0.3) rotate(720deg)",
-                            opacity: animationProgress === "start" ? 0.9 : 0,
-                        }}
-                    >
-                        {animatingCard.type === "REMOVE" ? (
-                            <div className="w-16 h-16 rounded-full border-4 border-dashed border-red-500 flex items-center justify-center bg-red-950/40 shadow-[0_0_20px_rgba(239,68,68,0.8)] animate-spin">
-                                <div className="w-6 h-6 rounded-full bg-red-600"></div>
+                            {/* Tech bracket corners */}
+                            <div className="absolute w-10 h-10 animate-target-lock flex flex-col justify-between">
+                                <div className="flex justify-between">
+                                    <div className="w-2 h-2 border-t-2 border-l-2 border-red-500" />
+                                    <div className="w-2 h-2 border-t-2 border-r-2 border-red-500" />
+                                </div>
+                                <div className="flex justify-between">
+                                    <div className="w-2 h-2 border-b-2 border-l-2 border-red-500" />
+                                    <div className="w-2 h-2 border-b-2 border-r-2 border-red-500" />
+                                </div>
                             </div>
-                        ) : (
-                            <div className="shadow-2xl rounded-xl overflow-hidden bg-white">
-                                <PlayingCard code={animatingCard.card} />
-                            </div>
-                        )}
-                    </div>
-                </>
+
+                            {/* Center target dot */}
+                            <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping" />
+
+                            {/* Satellite Laser Strike from above (Fires at 300ms) */}
+                            <div className="absolute bottom-[50%] left-[50%] -translate-x-[50%] w-2 bg-red-500 shadow-[0_0_15px_#ef4444] animate-laser-beam origin-bottom" />
+
+                            {/* Expanding energy shockwave on laser impact */}
+                            <div className="absolute w-12 h-12 border border-red-500 rounded-full opacity-0 animate-shockwave" />
+
+                            {/* Mock Dissolving Chip Overlay (duplicates the chip being removed, dissolves on impact) */}
+                            <div className={`absolute w-[55%] aspect-square rounded-full border-2 border-white shadow-lg animate-dissolve
+                                ${animatingCard.team === "BLUE" ? "bg-red-600 shadow-red-500/50" : "bg-blue-600 shadow-blue-500/50"}`}
+                            />
+                        </div>
+                    ) : animatingCard.type === "PLAY" ? (
+                        <div className={`w-full h-full rounded-full border-2 border-white shadow-lg
+                            ${animatingCard.team === "BLUE" ? "bg-blue-600 shadow-blue-500/50" : "bg-red-600 shadow-red-500/50"}`}
+                        />
+                    ) : (
+                        <div className="shadow-2xl rounded-xl overflow-hidden bg-white w-16 h-24">
+                            <PlayingCard code={animatingCard.card} />
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     );
