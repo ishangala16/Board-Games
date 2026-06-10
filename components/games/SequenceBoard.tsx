@@ -73,8 +73,10 @@ export default function SequenceBoard({ gameState, onCellClick, playerTeam, user
                             {cell && (
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                                     <div className={`
-                                        w-3/4 h-3/4 max-w-[48px] max-h-[48px] rounded-full shadow-lg border-2 border-white/20
-                                        ${cell === "BLUE" ? "bg-blue-600 shadow-blue-500/50" : "bg-red-600 shadow-red-500/50"}
+                                        w-[65%] h-[65%] max-w-[38px] max-h-[38px] rounded-full shadow-lg border-2 backdrop-blur-[1px] transition-all
+                                        ${cell === "BLUE" 
+                                            ? "bg-blue-600/70 border-blue-300/50 shadow-blue-500/40" 
+                                            : "bg-red-600/70 border-red-300/50 shadow-red-500/40"}
                                     `}></div>
                                 </div>
                             )}

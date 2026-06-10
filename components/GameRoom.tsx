@@ -124,7 +124,7 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
 
         const prev = prevGameStateRef.current;
 
-        if (isSequence && prev && gameState.lastAction && gameState.lastAction.playerId !== username) {
+        if (isSequence && prev && gameState.lastAction) {
             const isNewAction = !prev.lastAction ||
                 prev.lastAction.playerId !== gameState.lastAction.playerId ||
                 prev.lastAction.type !== gameState.lastAction.type ||
@@ -137,8 +137,11 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                 const opponentName = action.playerId === "AI_PLAYER" ? "AI Player" : action.playerId || "Opponent";
                 const opponentTeam = gameState.players?.[action.playerId] || (playerTeam === "BLUE" ? "RED" : "BLUE");
                 
+                const isOpponent = action.playerId !== username;
                 const startX = typeof window !== "undefined" ? window.innerWidth / 2 : 500;
-                const startY = 80;
+                const startY = typeof window !== "undefined" 
+                    ? (isOpponent ? 80 : window.innerHeight - 120) 
+                    : 80;
 
                 let endX = startX;
                 let endY = typeof window !== "undefined" ? window.innerHeight / 2 : 500;
@@ -151,8 +154,8 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                         const rect = cellElement.getBoundingClientRect();
                         endX = rect.left + rect.width / 2;
                         endY = rect.top + rect.height / 2;
-                        targetWidth = Math.min(rect.width * 0.75, 48);
-                        targetHeight = Math.min(rect.height * 0.75, 48);
+                        targetWidth = Math.min(rect.width * 0.65, 38);
+                        targetHeight = Math.min(rect.height * 0.65, 38);
                     }
                 }
 
@@ -175,10 +178,12 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                     setAnimationProgress("end");
                 }, 50);
 
+                const animDuration = action.type === "REMOVE_CHIP" ? 900 : 600;
+
                 const stateTimer = setTimeout(() => {
                     setLocalGameState(gameState);
                     setAnimatingCard(null);
-                }, 600);
+                }, animDuration);
 
                 prevGameStateRef.current = gameState;
                 return () => {
@@ -526,12 +531,18 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                     }}
                 >
                     {animatingCard.type === "REMOVE" ? (
-                        <div className="w-full h-full rounded-full border-2 border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)] bg-red-950/60 flex items-center justify-center">
-                            <span className="text-red-500 font-extrabold text-sm sm:text-base leading-none">×</span>
+                        <div className={`w-full h-full rounded-full border-2 backdrop-blur-[1px] shadow-lg flex items-center justify-center transition-all
+                            ${animatingCard.team === "BLUE" 
+                                ? "bg-red-600/70 border-red-300/50 shadow-red-500/40 text-red-200" 
+                                : "bg-blue-600/70 border-blue-300/50 shadow-blue-500/40 text-blue-200"}`}
+                        >
+                            <span className="font-extrabold text-sm sm:text-base leading-none">×</span>
                         </div>
                     ) : animatingCard.type === "PLAY" ? (
-                        <div className={`w-full h-full rounded-full border-2 border-white/20 shadow-lg
-                            ${animatingCard.team === "BLUE" ? "bg-blue-600 shadow-blue-500/50" : "bg-red-600 shadow-red-500/50"}`}
+                        <div className={`w-full h-full rounded-full border-2 backdrop-blur-[1px] shadow-lg transition-all
+                            ${animatingCard.team === "BLUE" 
+                                ? "bg-blue-600/70 border-blue-300/50 shadow-blue-500/40" 
+                                : "bg-red-600/70 border-red-300/50 shadow-red-500/40"}`}
                         />
                     ) : (
                         <div className="shadow-2xl rounded-xl overflow-hidden bg-white w-16 h-24">
