@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 
 interface Particle {
     x: number;
@@ -12,7 +12,7 @@ interface Particle {
     originalAlpha: number;
 }
 
-export default function InteractiveBackground() {
+export default React.memo(function InteractiveBackground() {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const mouseRef = useRef<{ x: number; y: number; active: boolean }>({
         x: 0,
@@ -194,4 +194,4 @@ export default function InteractiveBackground() {
             style={{ mixBlendMode: "screen" }}
         />
     );
-}
+});

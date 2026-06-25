@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import PlayingCard from "./PlayingCard";
-// We should import types but for frontend speed we'll inline or use 'any' if types not shared perfectly yet
-// import { BOARD_LAYOUT } from "@/lib/games/Sequence";  // We need to move logic to shared location or copy
 
 // Temporary Copy of Layout for Rendering
 const BOARD_LAYOUT = [
@@ -19,7 +17,7 @@ const BOARD_LAYOUT = [
     ["XX", "AD", "KD", "QD", "10D", "9D", "8D", "7D", "6D", "XX"]
 ];
 
-export default function SequenceBoard({ gameState, onCellClick, playerTeam, username = "", selectedCard = null, shakingCell = null }: { gameState: any, onCellClick: (x: number, y: number) => void, playerTeam: string, username?: string, selectedCard?: string | null, shakingCell?: { x: number, y: number } | null }) {
+export default React.memo(function SequenceBoard({ gameState, onCellClick, playerTeam, username = "", selectedCard = null, shakingCell = null }: { gameState: any, onCellClick: (x: number, y: number) => void, playerTeam: string, username?: string, selectedCard?: string | null, shakingCell?: { x: number, y: number } | null }) {
     if (!gameState) return <div className="text-white">Waiting for game state...</div>;
 
     const isTwoEyedJack = (c: string) => c === "JC" || c === "JD";
@@ -91,4 +89,4 @@ export default function SequenceBoard({ gameState, onCellClick, playerTeam, user
             ))}
         </div>
     );
-}
+});

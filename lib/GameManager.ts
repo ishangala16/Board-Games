@@ -81,14 +81,16 @@ export class GameManager {
         }
 
         if (isSinglePlayer) {
-            await this.joinGame(roomId, "AI_PLAYER");
+            await this.joinGame(roomId, "AI_PLAYER", true);
         }
 
         const game = this.games.get(roomId);
         return game ? game.state : null;
     }
 
-    async joinGame(roomId: string, user: string) {
+    async joinGame(roomId: string, user: string, isInternal: boolean = false) {
+        if (user === "AI_PLAYER" && !isInternal) return null;
+
         const game = this.games.get(roomId);
         if (!game) return null;
 
@@ -104,9 +106,6 @@ export class GameManager {
         game.players.push(user);
 
         if (game.type === "SEQUENCE") {
-            game.state.players[user] = "RED"; // Second player is RED
-
-            // Deal hand
             const p2Hand = [];
             for (let i = 0; i < 7; i++) {
                 if (game.state.deck.length > 0) {
@@ -114,6 +113,7 @@ export class GameManager {
                 }
             }
             game.state.hands[user] = p2Hand;
+            game.state.players[user] = "RED";
         } else if (game.type === "SPLENDOR") {
             // Splendor Join
             game.state.players[user] = {

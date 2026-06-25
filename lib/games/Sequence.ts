@@ -405,94 +405,34 @@ function isCorner(r: number, c: number) {
 
 export function isPartOfSequence(board: (Team | null)[][], x: number, y: number, team: Team): boolean {
     const size = 10;
+    const isMatching = (r: number, c: number) => {
+        if (r < 0 || r >= size || c < 0 || c >= size) return false;
+        return board[r][c] === team || isCorner(r, c);
+    };
 
-    // Check all window positions that could include (x,y)
-    // Offset i from -4 to 0 (relative to the sequence start)
+    const directions = [
+        [[0, -1], [0, 1]], // Horizontal: Left, Right
+        [[-1, 0], [1, 0]], // Vertical: Up, Down
+        [[-1, -1], [1, 1]], // Diagonal: Top-Left, Bottom-Right
+        [[-1, 1], [1, -1]]  // Diagonal: Top-Right, Bottom-Left
+    ];
 
-    // Horizontal
-    for (let i = 0; i < 5; i++) {
-        const startX = x - i;
-        const endX = startX + 4;
-        if (startX >= 0 && endX < size) {
-            let match = true;
-            for (let k = 0; k < 5; k++) {
-                const cell = board[y][startX + k];
-                if (cell !== team && !isCorner(y, startX + k)) {
-                    match = false;
+    for (const axis of directions) {
+        let contiguous = 1; // Count the target chip itself
+        for (const [dy, dx] of axis) {
+            let step = 1;
+            while (true) {
+                const r = y + dy * step;
+                const c = x + dx * step;
+                if (isMatching(r, c)) {
+                    contiguous++;
+                    step++;
+                } else {
                     break;
                 }
             }
-            if (match) return true;
         }
-    }
-
-    // Vertical
-    for (let i = 0; i < 5; i++) {
-        const startY = y - i;
-        const endY = startY + 4;
-        if (startY >= 0 && endY < size) {
-            let match = true;
-            for (let k = 0; k < 5; k++) {
-                const cell = board[startY + k][x];
-                if (cell !== team && !isCorner(startY + k, x)) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) return true;
-        }
-    }
-
-    // Diagonal (Top-Left to Bottom-Right)
-    for (let i = 0; i < 5; i++) {
-        const startX = x - i;
-        const startY = y - i;
-        const endX = startX + 4;
-        const endY = startY + 4;
-
-        if (startX >= 0 && startY >= 0 && endX < size && endY < size) {
-            let match = true;
-            for (let k = 0; k < 5; k++) {
-                const cell = board[startY + k][startX + k];
-                if (cell !== team && !isCorner(startY + k, startX + k)) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) return true;
-        }
-    }
-
-    // Diagonal (Top-Right to Bottom-Left)
-    for (let i = 0; i < 5; i++) {
-        const startX = x + i; // Moving LEFT means start X is higher? No.
-        // Sequence: (r, c), (r+1, c-1)...
-        // We want to find a sequence starting at (startR, startC) such that (y, x) is the k-th element.
-        // (y, x) = (startR + k, startC - k)
-        // => startR = y - k
-        // => startC = x + k
-
-        const startY = y - i;
-        const startX_ = x + i;
-
-        // Sequence goes down-left:
-        // (startY, startX_), (startY+1, startX_-1) ...
-
-        // Bounds check for the whole sequence
-        // Start point
-        // End point: (startY+4, startX_-4)
-
-        if (startY >= 0 && startX_ < size && (startY + 4) < size && (startX_ - 4) >= 0) {
-            let match = true;
-            for (let k = 0; k < 5; k++) {
-                const cell = board[startY + k][startX_ - k];
-                if (cell !== team && !isCorner(startY + k, startX_ - k)) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) return true;
-        }
+        if (contiguous >= 5) return true;
     }
 
     return false;

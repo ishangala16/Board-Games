@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 import { SplendorState, Card, Noble, Gem, Tier, canBuyCard } from "../../lib/games/Splendor";
 import SplendorPlayer from "./SplendorPlayer";
 
@@ -9,7 +9,7 @@ interface SplendorBoardProps {
     playerUsername: string;
 }
 
-export default function SplendorBoard({ gameState, onAction, playerUsername }: SplendorBoardProps) {
+export default React.memo(function SplendorBoard({ gameState, onAction, playerUsername }: SplendorBoardProps) {
     const [selectedTokens, setSelectedTokens] = useState<Gem[]>([]);
 
     if (!gameState) return <div className="text-white">Loading Splendor...</div>;
@@ -315,4 +315,4 @@ export default function SplendorBoard({ gameState, onAction, playerUsername }: S
             </div>
         </div>
     );
-}
+});

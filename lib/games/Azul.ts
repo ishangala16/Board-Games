@@ -81,7 +81,8 @@ function replenishFactories(state: AzulState) {
                 state.discard = [];
             }
             if (state.bag.length > 0) {
-                state.factories[i].push(state.bag.pop()!);
+                const tile = state.bag.pop();
+                if (tile) state.factories[i].push(tile);
             }
         }
     }

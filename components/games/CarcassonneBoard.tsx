@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 import {
     CarcassonneState,
     TILE_DEFINITIONS,
@@ -9,13 +9,7 @@ import {
     isValidPlacement
 } from "../../lib/games/Carcassonne";
 
-interface CarcassonneBoardProps {
-    gameState: CarcassonneState;
-    onAction: (action: CarcassonneAction | any) => void;
-    playerUsername: string;
-}
-
-export default function CarcassonneBoard({ gameState, onAction, playerUsername }: CarcassonneBoardProps) {
+export default React.memo(function CarcassonneBoard({ gameState, onAction, playerUsername }: { gameState: CarcassonneState, onAction: (action: any) => void, playerUsername: string }) {
     // Canvas State
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
@@ -596,4 +590,4 @@ export default function CarcassonneBoard({ gameState, onAction, playerUsername }
             </div>
         </div>
     );
-}
+});

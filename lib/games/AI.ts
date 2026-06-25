@@ -633,9 +633,6 @@ function generateAzulMove(state: AzulState, aiPlayerId: string, difficulty: "EAS
                     score = completionScore + floorPenalty;
                 }
                 
-                if (difficulty === "HARD" && dest === "FLOOR") {
-                    score -= 2;
-                }
             }
 
             // Center drafts might give the first player token, which adds an automatic -1/2 penalty

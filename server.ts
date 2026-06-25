@@ -38,9 +38,13 @@ app.prepare().then(() => {
 
     const generateRoomId = () => {
         const words = ["CAT", "MAT", "MAN", "RAN", "BAT", "HAT", "DOG", "LOG", "PIG", "COW", "SUN", "FUN", "JOY", "SKY", "FOX", "BOX", "CAR", "BUS", "TEA", "CUP", "ZOO", "ZIP", "ZAP"];
-        const randomWord = words[Math.floor(Math.random() * words.length)];
-        const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        return `${randomWord}${randomNum}`;
+        let id = "";
+        do {
+            const randomWord = words[Math.floor(Math.random() * words.length)];
+            const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+            id = `${randomWord}${randomNum}`;
+        } while (gameManager.getGameInstance(id));
+        return id;
     };
 
     io.on("connection", (socket) => {
@@ -49,6 +53,7 @@ app.prepare().then(() => {
         // Resolve real IP geolocation
         let clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
         if (Array.isArray(clientIp)) clientIp = clientIp[0];
+        if (typeof clientIp === "string" && clientIp.includes(",")) clientIp = clientIp.split(",")[0].trim();
         if (typeof clientIp === "string" && clientIp.includes("::ffff:")) clientIp = clientIp.split("::ffff:")[1];
         
         const geo = geoip.lookup(clientIp as string);
@@ -119,6 +124,7 @@ app.prepare().then(() => {
                     incrementTotalGamesPlayed();
                     broadcastPlayerStats();
                     if (callback) callback({ roomId });
+                    if (isSinglePlayer) handleAITurns(roomId);
                 } catch (e) {
                     console.error("Create Game Error:", e);
                     if (callback) callback({ error: "Failed to create game" });
@@ -149,7 +155,7 @@ app.prepare().then(() => {
             }
         });
 
-        const handleAITurns = async (roomId: string) => {
+        async function handleAITurns(roomId: string) {
             const gameInstance = gameManager.getGameInstance(roomId);
             if (!gameInstance || !gameInstance.players.includes("AI_PLAYER")) return;
 
@@ -227,6 +233,7 @@ app.prepare().then(() => {
                 if (newState) {
                     io.to(upperRoomId).emit("game_state_update", newState);
                     io.to(upperRoomId).emit("system_message", "The game has been restarted!");
+                    handleAITurns(upperRoomId);
                 }
             } catch (e: any) {
                 console.error("Restart error:", e.message);
