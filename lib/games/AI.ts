@@ -6,43 +6,78 @@ import { AzulState, COLORS, WALL_PATTERN, TileColor } from "./Azul";
 export function generateAIMove(
     gameType: "SEQUENCE" | "SPLENDOR" | "CARCASSONNE" | "AZUL",
     state: any,
-    aiPlayerId: string
+    aiPlayerId: string,
+    difficulty: "EASY" | "HARD" = "HARD"
 ): any {
     switch (gameType) {
         case "SEQUENCE":
-            return generateSequenceMove(state, aiPlayerId);
+            return generateSequenceMove(state, aiPlayerId, difficulty);
         case "SPLENDOR":
             return generateSplendorMove(state, aiPlayerId);
         case "CARCASSONNE":
             return generateCarcassonneMove(state, aiPlayerId);
         case "AZUL":
-            return generateAzulMove(state, aiPlayerId);
+            return generateAzulMove(state, aiPlayerId, difficulty);
         default:
             throw new Error(`Unknown game type: ${gameType}`);
     }
 }
 
 // --- SEQUENCE AI ---
-function generateSequenceMove(state: SequenceState, aiPlayerId: string): any {
+function evaluateSequenceLength(board: (any)[][], team: string, x: number, y: number): number {
+    const isCorner = (r: number, c: number) => (r === 0 && c === 0) || (r === 0 && c === 9) || (r === 9 && c === 0) || (r === 9 && c === 9);
+    const getCell = (r: number, c: number) => {
+        if (r < 0 || r >= 10 || c < 0 || c >= 10) return null;
+        if (r === y && c === x) return team;
+        return board[r][c];
+    };
+    let maxLength = 0;
+    const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+    for (const [dy, dx] of dirs) {
+        let count = 1;
+        for (let i = 1; i < 5; i++) {
+            const r = y + dy * i;
+            const c = x + dx * i;
+            const cell = getCell(r, c);
+            if (cell === team || isCorner(r, c)) count++;
+            else break;
+        }
+        for (let i = 1; i < 5; i++) {
+            const r = y - dy * i;
+            const c = x - dx * i;
+            const cell = getCell(r, c);
+            if (cell === team || isCorner(r, c)) count++;
+            else break;
+        }
+        if (count > maxLength) maxLength = count;
+    }
+    return maxLength;
+}
+
+function generateSequenceMove(state: SequenceState, aiPlayerId: string, difficulty: "EASY" | "HARD"): any {
     const aiTeam = state.players[aiPlayerId];
     const opponentTeam = aiTeam === "BLUE" ? "RED" : "BLUE";
 
     // 1. Handle pending REMOVE_CHIP action
     if (state.pendingAction && state.pendingAction.type === "REMOVE_CHIP" && state.pendingAction.playerId === aiPlayerId) {
         // Find opponent chips that are not part of a completed sequence
-        const validTargets: { x: number, y: number }[] = [];
+        const validTargets: { x: number, y: number, score: number }[] = [];
         for (let y = 0; y < 10; y++) {
             for (let x = 0; x < 10; x++) {
                 if (state.board[y][x] === opponentTeam) {
                     if (!isPartOfSequence(state.board, x, y, opponentTeam)) {
-                        validTargets.push({ x, y });
+                        let score = 0;
+                        if (difficulty === "HARD") {
+                            score = evaluateSequenceLength(state.board, opponentTeam, x, y);
+                        }
+                        validTargets.push({ x, y, score });
                     }
                 }
             }
         }
 
         if (validTargets.length > 0) {
-            // Pick a chip to remove (e.g. first one)
+            if (difficulty === "HARD") validTargets.sort((a, b) => b.score - a.score);
             const target = validTargets[0];
             return {
                 type: "REMOVE_CHIP",
@@ -85,19 +120,26 @@ function generateSequenceMove(state: SequenceState, aiPlayerId: string): any {
         if (isOneEyedJack(card)) {
             // One-Eyed Jack: can remove any opponent chip.
             // If there's an opponent chip to remove, play it!
-            const validTargets: { x: number, y: number }[] = [];
+            const validTargets: { x: number, y: number, score: number }[] = [];
             for (let y = 0; y < 10; y++) {
                 for (let x = 0; x < 10; x++) {
                     if (state.board[y][x] === opponentTeam && !isPartOfSequence(state.board, x, y, opponentTeam)) {
-                        validTargets.push({ x, y });
+                        let score = 50;
+                        if (difficulty === "HARD") {
+                            const oppSeqLen = evaluateSequenceLength(state.board, opponentTeam, x, y);
+                            if (oppSeqLen >= 4) score += 5000;
+                            else if (oppSeqLen === 3) score += 500;
+                            else if (oppSeqLen === 2) score += 50;
+                        }
+                        validTargets.push({ x, y, score });
                     }
                 }
             }
             if (validTargets.length > 0) {
-                // Return playing the card (which transitions to pending REMOVE_CHIP state)
-                const playScore = 50; // Give it a high score
+                if (difficulty === "HARD") validTargets.sort((a, b) => b.score - a.score);
+                const playScore = validTargets[0].score;
                 if (!bestPlay || playScore > bestPlay.score) {
-                    bestPlay = { card, x: 0, y: 0, score: playScore };
+                    bestPlay = { card, x: validTargets[0].x, y: validTargets[0].y, score: playScore };
                 }
             }
             continue;
@@ -125,34 +167,39 @@ function generateSequenceMove(state: SequenceState, aiPlayerId: string): any {
         for (const cand of candidates) {
             let score = 0;
 
-            // 1. Neighbor scoring
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    if (dx === 0 && dy === 0) continue;
-                    const nx = cand.x + dx;
-                    const ny = cand.y + dy;
-                    if (nx >= 0 && nx < 10 && ny >= 0 && ny < 10) {
-                        const cell = state.board[ny][nx];
-                        if (cell === aiTeam) {
-                            score += 10; // Build sequence
-                        } else if (cell === opponentTeam) {
-                            score += 5; // Block opponent
+            if (difficulty === "EASY") {
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const nx = cand.x + dx;
+                        const ny = cand.y + dy;
+                        if (nx >= 0 && nx < 10 && ny >= 0 && ny < 10) {
+                            const cell = state.board[ny][nx];
+                            if (cell === aiTeam) score += 10;
+                            else if (cell === opponentTeam) score += 5;
                         }
                     }
                 }
+                const tempBoard = state.board.map(row => [...row]);
+                tempBoard[cand.y][cand.x] = aiTeam;
+                if (checkWin(tempBoard, aiTeam)) score += 1000;
+            } else {
+                const mySeqLen = evaluateSequenceLength(state.board, aiTeam, cand.x, cand.y);
+                const oppSeqLen = evaluateSequenceLength(state.board, opponentTeam, cand.x, cand.y);
+
+                if (mySeqLen >= 5) score += 10000;
+                else if (mySeqLen === 4) score += 1000;
+                else if (mySeqLen === 3) score += 100;
+                else if (mySeqLen === 2) score += 10;
+
+                if (oppSeqLen >= 5) score += 8000;
+                else if (oppSeqLen === 4) score += 800;
+                else if (oppSeqLen === 3) score += 80;
+                else if (oppSeqLen === 2) score += 8;
             }
 
-            // 2. Win check scoring
-            const tempBoard = state.board.map(row => [...row]);
-            tempBoard[cand.y][cand.x] = aiTeam;
-            if (checkWin(tempBoard, aiTeam)) {
-                score += 1000; // Immediate win!
-            }
-
-            // Wild cards have a slight penalty so we save them if normal plays are good,
-            // or we prefer playing normal cards first.
             if (isWild) {
-                score -= 2;
+                score -= (difficulty === "HARD" ? 200 : 2);
             }
 
             if (!bestPlay || score > bestPlay.score) {
@@ -465,7 +512,25 @@ function generateCarcassonneMove(state: CarcassonneState, aiPlayerId: string): a
 }
 
 // --- AZUL AI ---
-function generateAzulMove(state: AzulState, aiPlayerId: string): any {
+function simulateWallScore(wall: boolean[][], row: number, col: number): number {
+    let horizontalMatches = 1;
+    let verticalMatches = 1;
+    for (let c = col + 1; c < 5; c++) { if (wall[row][c]) horizontalMatches++; else break; }
+    for (let c = col - 1; c >= 0; c--) { if (wall[row][c]) horizontalMatches++; else break; }
+    for (let r = row + 1; r < 5; r++) { if (wall[r][col]) verticalMatches++; else break; }
+    for (let r = row - 1; r >= 0; r--) { if (wall[r][col]) verticalMatches++; else break; }
+
+    if (horizontalMatches === 1 && verticalMatches === 1) return 1;
+    let score = 0;
+    if (horizontalMatches > 1) score += horizontalMatches;
+    if (verticalMatches > 1) score += verticalMatches;
+    
+    if (horizontalMatches === 5) score += 2;
+    if (verticalMatches === 5) score += 7;
+    return score;
+}
+
+function generateAzulMove(state: AzulState, aiPlayerId: string, difficulty: "EASY" | "HARD"): any {
     const player = state.players[aiPlayerId];
     if (!player) return null;
 
@@ -548,18 +613,28 @@ function generateAzulMove(state: AzulState, aiPlayerId: string): any {
 
                 if (draftedCount <= remaining) {
                     if (draftedCount === remaining) {
-                        // Completes the line!
-                        score = 10 + dest;
+                        if (difficulty === "HARD") {
+                            const colIdxOnWall = WALL_PATTERN[dest].indexOf(choice.color);
+                            score = simulateWallScore(player.wall, dest, colIdxOnWall);
+                        } else {
+                            score = 10 + dest;
+                        }
                     } else {
-                        // Progress
                         score = draftedCount;
                     }
                 } else {
-                    // Completes the line but overflows to floor
                     const overflow = draftedCount - remaining;
-                    const completionScore = 10 + dest;
+                    let completionScore = 10 + dest;
+                    if (difficulty === "HARD") {
+                        const colIdxOnWall = WALL_PATTERN[dest].indexOf(choice.color);
+                        completionScore = simulateWallScore(player.wall, dest, colIdxOnWall);
+                    }
                     const floorPenalty = getFloorPenalty(player.floorLine.length, overflow);
                     score = completionScore + floorPenalty;
+                }
+                
+                if (difficulty === "HARD" && dest === "FLOOR") {
+                    score -= 2;
                 }
             }
 

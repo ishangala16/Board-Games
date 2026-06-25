@@ -5,6 +5,8 @@ import next from "next";
 import { Server } from "socket.io";
 import { GameManager } from "./lib/GameManager";
 import { generateAIMove } from "./lib/games/AI";
+import geoip from "geoip-lite";
+import { getTotalGamesPlayed, incrementTotalGamesPlayed } from "./lib/sqlite-db";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
@@ -20,13 +22,46 @@ app.prepare().then(() => {
 
     const gameManager = new GameManager();
 
+    const clientLocations = new Map<string, string>();
+
+    const broadcastPlayerStats = () => {
+        const locations: Record<string, number> = {};
+        for (const loc of clientLocations.values()) {
+            locations[loc] = (locations[loc] || 0) + 1;
+        }
+        io.emit("concurrent_players_update", { 
+            total: io.engine.clientsCount, 
+            locations,
+            totalGames: getTotalGamesPlayed() 
+        });
+    };
+
+    const generateRoomId = () => {
+        const words = ["CAT", "MAT", "MAN", "RAN", "BAT", "HAT", "DOG", "LOG", "PIG", "COW", "SUN", "FUN", "JOY", "SKY", "FOX", "BOX", "CAR", "BUS", "TEA", "CUP", "ZOO", "ZIP", "ZAP"];
+        const randomWord = words[Math.floor(Math.random() * words.length)];
+        const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        return `${randomWord}${randomNum}`;
+    };
+
     io.on("connection", (socket) => {
         console.log("Client connected:", socket.id);
-        io.emit("concurrent_players_update", io.engine.clientsCount);
+        
+        // Resolve real IP geolocation
+        let clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
+        if (Array.isArray(clientIp)) clientIp = clientIp[0];
+        if (typeof clientIp === "string" && clientIp.includes("::ffff:")) clientIp = clientIp.split("::ffff:")[1];
+        
+        const geo = geoip.lookup(clientIp as string);
+        const locationName = geo ? geo.country : (clientIp === "127.0.0.1" || clientIp === "::1" ? "Local" : "Unknown");
+
+        clientLocations.set(socket.id, locationName);
+        
+        broadcastPlayerStats();
 
         socket.on("disconnect", () => {
             console.log("Client disconnected:", socket.id);
-            io.emit("concurrent_players_update", io.engine.clientsCount);
+            clientLocations.delete(socket.id);
+            broadcastPlayerStats();
         });
 
         // Lobby & Chat Events
@@ -37,28 +72,40 @@ app.prepare().then(() => {
         });
 
         socket.on("send_message", ({ room, message, username }) => {
-            const upperRoom = typeof room === "string" ? room.toUpperCase() : room;
+            let emitRoom = room;
+            if (typeof room === "string") {
+                emitRoom = room.toLowerCase() === "lobby" ? "lobby" : room.toUpperCase();
+            }
             const messageId = Math.random().toString(36).substring(7);
-            io.to(upperRoom).emit("receive_message", { id: messageId, username, message, timestamp: new Date() });
+            io.to(emitRoom).emit("receive_message", { id: messageId, username, message, timestamp: new Date() });
         });
 
         socket.on("typing", ({ room, username, isTyping }) => {
-            const upperRoom = typeof room === "string" ? room.toUpperCase() : room;
-            socket.to(upperRoom).emit("typing_update", { username, isTyping });
+            let emitRoom = room;
+            if (typeof room === "string") {
+                emitRoom = room.toLowerCase() === "lobby" ? "lobby" : room.toUpperCase();
+            }
+            io.to(emitRoom).emit("typing_update", { username, isTyping });
         });
 
         socket.on("message_reaction", ({ room, messageId, reaction, username }) => {
-            const upperRoom = typeof room === "string" ? room.toUpperCase() : room;
-            io.to(upperRoom).emit("message_reaction_update", { messageId, reaction, username });
+            let emitRoom = room;
+            if (typeof room === "string") {
+                emitRoom = room.toLowerCase() === "lobby" ? "lobby" : room.toUpperCase();
+            }
+            io.to(emitRoom).emit("message_reaction_update", { messageId, reaction, username });
         });
 
         socket.on("buzz_reaction", ({ room, emoji, username }) => {
-            const upperRoom = typeof room === "string" ? room.toUpperCase() : room;
-            io.to(upperRoom).emit("buzz_reaction_update", { emoji, username });
+            let emitRoom = room;
+            if (typeof room === "string") {
+                emitRoom = room.toLowerCase() === "lobby" ? "lobby" : room.toUpperCase();
+            }
+            io.to(emitRoom).emit("buzz_reaction_update", { emoji, username });
         });
 
-        socket.on("create_room", async ({ username, type, isSinglePlayer }: { username: string, type: "SEQUENCE" | "SPLENDOR" | "CARCASSONNE" | "AZUL", isSinglePlayer?: boolean }, callback) => {
-            const roomId = Math.random().toString(36).substring(7).toUpperCase(); // Still generated client-side essentially, or here.
+        socket.on("create_room", async ({ username, type, isSinglePlayer, aiDifficulty }: { username: string, type: "SEQUENCE" | "SPLENDOR" | "CARCASSONNE" | "AZUL", isSinglePlayer?: boolean, aiDifficulty?: "EASY" | "HARD" }, callback) => {
+            const roomId = generateRoomId();
             // In GameManager, we are now using this ID to query DB.
             // Ideally we create in DB and get ID back, but for now we pass IT in.
 
@@ -68,7 +115,9 @@ app.prepare().then(() => {
             // Initialize Game
             if (["SEQUENCE", "SPLENDOR", "CARCASSONNE", "AZUL"].includes(type)) {
                 try {
-                    await gameManager.createGame(roomId, type, username, isSinglePlayer);
+                    await gameManager.createGame(roomId, type, username, isSinglePlayer, aiDifficulty);
+                    incrementTotalGamesPlayed();
+                    broadcastPlayerStats();
                     if (callback) callback({ roomId });
                 } catch (e) {
                     console.error("Create Game Error:", e);
@@ -126,7 +175,8 @@ app.prepare().then(() => {
                         const freshInstance = gameManager.getGameInstance(roomId);
                         if (!freshInstance) return;
 
-                        const aiAction = generateAIMove(freshInstance.type, freshInstance.state, "AI_PLAYER");
+                        const difficulty = freshInstance.state.aiDifficulty || "HARD";
+                        const aiAction = generateAIMove(freshInstance.type, freshInstance.state, "AI_PLAYER", difficulty);
                         if (aiAction) {
                             console.log(`AI Move in ${roomId}:`, aiAction);
 

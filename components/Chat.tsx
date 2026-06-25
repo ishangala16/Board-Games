@@ -260,7 +260,7 @@ export default function Chat({ socket, username, room, onClose }: { socket: any,
     };
 
     return (
-        <div className="flex flex-col h-full bg-warm-black border-l border-white/10 w-full md:w-80 font-sans shadow-2xl relative">
+        <div className="flex flex-col h-full bg-warm-black border-l border-white/10 w-full font-sans shadow-2xl relative">
             {/* Scoped CSS animations for floating emojis and chat bounce */}
             <style>{`
                 @keyframes float-up {

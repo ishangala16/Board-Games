@@ -21,6 +21,7 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
     const [copied, setCopied] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
     const [hasAutoClosedChat, setHasAutoClosedChat] = useState(false);
+    const [unreadMessages, setUnreadMessages] = useState(0);
 
     const [localGameState, setLocalGameState] = useState<any>(null);
     const prevGameStateRef = useRef<any>(null);
@@ -96,10 +97,18 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
             triggerValidationError(errorMessage);
         });
 
+        const handleMessage = (msg: any) => {
+            if (msg.username !== username && !showChat) {
+                setUnreadMessages(prev => prev + 1);
+            }
+        };
+        socket.on("receive_message", handleMessage);
+
         return () => {
             socket.off("error");
+            socket.off("receive_message", handleMessage);
         };
-    }, [socket]);
+    }, [socket, username, showChat]);
 
     useEffect(() => {
         if (gameState?.players && "AI_PLAYER" in gameState.players && !hasAutoClosedChat) {
@@ -371,8 +380,11 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                             </span>
                         </div>
                         <button
-                            onClick={() => setShowChat(!showChat)}
-                            className={`px-2 py-1 sm:px-3 sm:py-1 rounded text-[10px] sm:text-xs font-semibold border flex items-center gap-1 sm:gap-1.5 transition-all shrink-0 ${showChat
+                            onClick={() => {
+                                setShowChat(!showChat);
+                                if (!showChat) setUnreadMessages(0);
+                            }}
+                            className={`px-2 py-1 sm:px-3 sm:py-1 rounded text-[10px] sm:text-xs font-semibold border flex items-center gap-1 sm:gap-1.5 transition-all shrink-0 relative ${showChat
                                     ? "bg-[#9b51e0]/20 text-[#a855f7] border-[#9b51e0]/40 shadow-[0_0_12px_rgba(155,81,224,0.25)]"
                                     : "border-white/10 text-gray-400 hover:text-white hover:border-white/30 bg-white/5"
                                 }`}
@@ -383,6 +395,11 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
                                 <path d="M16 3v18" />
                             </svg>
                             <span className="hidden sm:inline">Chat</span>
+                            {unreadMessages > 0 && !showChat && (
+                                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-warm-black animate-pulse shadow-md">
+                                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                                </span>
+                            )}
                         </button>
                         <button
                             onClick={onLeave}
@@ -488,13 +505,11 @@ export default function GameRoom({ socket, username, roomId, onLeave, gameState,
             </div>
 
             {/* Intimate Sidebar */}
-            {showChat && (
-                <div className="border-l border-white/10 bg-warm-black shadow-xl z-50 absolute right-0 top-0 h-full w-80 max-w-[85vw] sm:relative sm:shrink-0 animate-fade-in overflow-hidden">
-                    <div className="w-80 max-w-[85vw] h-full"> {/* Inner container to prevent content squashing */}
-                        <Chat socket={socket} username={username} room={roomId} onClose={() => setShowChat(false)} />
-                    </div>
+            <div className={`bg-warm-black shadow-xl z-50 absolute right-0 top-0 h-full max-w-[85vw] sm:relative sm:shrink-0 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden border-l ${showChat ? "translate-x-0 w-80 border-white/10" : "translate-x-full sm:translate-x-0 w-80 sm:w-0 border-transparent"}`}>
+                <div className="w-80 max-w-[85vw] h-full"> {/* Inner container to prevent content squashing */}
+                    <Chat socket={socket} username={username} room={roomId} onClose={() => setShowChat(false)} />
                 </div>
-            )}
+            </div>
 
             {/* Victory Modal */}
             {gameState?.winner && (

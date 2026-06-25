@@ -16,11 +16,12 @@ export interface GameInstance {
 export class GameManager {
     private games: Map<string, GameInstance> = new Map();
 
-    async createGame(roomId: string, type: "SEQUENCE" | "SPLENDOR" | "CARCASSONNE" | "AZUL", host: string, isSinglePlayer?: boolean) {
+    async createGame(roomId: string, type: "SEQUENCE" | "SPLENDOR" | "CARCASSONNE" | "AZUL", host: string, isSinglePlayer?: boolean, aiDifficulty: "EASY" | "HARD" = "HARD") {
         if (type === "SEQUENCE") {
             // ... (Sequence Logic - Shortened for brevity in this replace, assuming existing context is fine, but I must match exact target for robustness)
             // To avoid context issues, I will rewrite the SEQUENCE block exactly as it appears in the view_file output to be safe, then add others.
             const initialState = JSON.parse(JSON.stringify(INITIAL_STATE));
+            initialState.aiDifficulty = aiDifficulty;
             if (initialState.deck) initialState.deck = initialState.deck.sort(() => Math.random() - 0.5);
             initialState.players[host] = "BLUE";
             const hostHand = [];
@@ -33,7 +34,8 @@ export class GameManager {
 
         } else if (type === "SPLENDOR") {
             // ... (Splendor Logic)
-            const initialState = INITIAL_SPLENDOR_STATE();
+            const initialState = INITIAL_SPLENDOR_STATE() as any;
+            initialState.aiDifficulty = aiDifficulty;
             initialState.players[host] = {
                 username: host,
                 tokens: { WHITE: 0, BLUE: 0, GREEN: 0, RED: 0, BLACK: 0, GOLD: 0 },
@@ -48,7 +50,8 @@ export class GameManager {
         } else if (type === "CARCASSONNE") {
             // Lazy load to avoid circular deps if any
             const { INITIAL_CARCASSONNE_STATE } = require("./games/Carcassonne");
-            const initialState = INITIAL_CARCASSONNE_STATE();
+            const initialState = INITIAL_CARCASSONNE_STATE() as any;
+            initialState.aiDifficulty = aiDifficulty;
             initialState.players[host] = {
                 username: host,
                 score: 0,
@@ -63,7 +66,8 @@ export class GameManager {
             this.games.set(roomId, { id: roomId, type, state: initialState, players: [host] });
         } else if (type === "AZUL") {
             const { INITIAL_AZUL_STATE, azulReducer } = require("./games/Azul");
-            let initialState = INITIAL_AZUL_STATE();
+            let initialState = INITIAL_AZUL_STATE() as any;
+            initialState.aiDifficulty = aiDifficulty;
             initialState.players[host] = {
                 username: host,
                 score: 0,
@@ -175,7 +179,8 @@ export class GameManager {
         const host = humanPlayers[0];
 
         // Re-create game state
-        await this.createGame(roomId, type, host, isSinglePlayer);
+        const aiDifficulty = game.state.aiDifficulty || "HARD";
+        await this.createGame(roomId, type, host, isSinglePlayer, aiDifficulty);
 
         // Add other human players back
         for (let i = 1; i < humanPlayers.length; i++) {
