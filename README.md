@@ -1,160 +1,183 @@
-# Cozy Tabletop: Cosmic-Themed Multiplayer Board Games Lounge
+<div align="center">
+  <h1>🌌 Board Games</h1>
+  <p><strong>Cosmic-Themed Multiplayer Board Games Lounge</strong></p>
 
-Cozy Tabletop is a real-time board game platform built with Next.js, WebSockets (Socket.io), and Express. It features a responsive dark-mode interface styled with cosmic animated gradients and interactive canvas particle overlays.
+  [![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+  [![Socket.io](https://img.shields.io/badge/Socket.io-Realtime-black?style=for-the-badge&logo=socket.io)](https://socket.io/)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+</div>
 
-Players can compete in real-time multiplayer lobbies or play against a smart heuristic AI in Sequence, Splendor, Carcassonne, and Azul.
-
----
-
-## Features
-
-### Supported Games
-* **Sequence**
-  * Connect 5 chips in a row (horizontal, vertical, or diagonal) to win.
-  * Use Two-Eyed Jacks as wild cards and One-Eyed Jacks as action cards to remove opponent chips.
-  * Displays dynamic card hands, cell highlights (yellow for playable, red for removable), and auto-locks completed sequences.
-* **Splendor**
-  * Collect gem tokens (White, Blue, Green, Red, Black, and Gold).
-  * Purchase development cards from the market grid to build permanent gemstone bonuses.
-  * Attract Nobles (3 points each) when resource conditions are met. First to 15 points wins.
-* **Carcassonne**
-  * Place medieval terrain tiles (Cities, Roads, and Monasteries) onto a shared board.
-  * Supports drag-to-pan, scroll-to-zoom, and tile rotation.
-  * Place meeples to claim structures and score points when features are completed.
-* **Azul**
-  * Draft mosaic tiles from circular factories or the center pool.
-  * Place tiles in pattern lines to move them to your decorative palace wall at the end of the round.
-  * Manage tile overflow penalties and claim tile set completion bonuses.
-
-### Single-Player AI Mode
-Toggle "Play vs AI" mode in the lobby to play solo against a heuristic AI player in any game.
-* **Sequence AI**: Analyzes boards to build paths (+10 points) or block you (+5 points), prioritizes immediate wins, and removes threatening opponent chips.
-* **Splendor AI**: Evaluates cards in the market, collects gem combinations to resolve deficits, and reserves cards when blocked.
-* **Carcassonne AI**: Rotates and tests valid adjacent tile placements, prioritizing Monasteries for meeple placement.
-* **Azul AI**: Scores pattern lines to complete rows while avoiding negative floor line overflows.
-
-### Visual and Interaction Design
-* **Interactive Background**: Animated canvas-based particle network that drifts in the background. Particles establish links with nearby nodes and react to mouse cursor/touch hover gravity.
-* **Cosmic Theme**: Deep animated gradient background with a cardboard texture overlay. Visual accents use blue-purple-pink text gradients and glowing focus highlights.
-* **Micro-Animations and Alerts**: Custom validation toasts paired with hand-shaking animations to provide instant feedback on invalid move attempts.
-* **Responsive Layout**: Mobile-first design, overlapping card hands, floating widgets, and a toggleable slide-out chat panel that slides out from the right on mobile screens.
-* **Copyable Room ID**: Glassmorphic copy button in the room header that copies the current Room ID to clipboard with visual "Copied!" feedback.
+> [!NOTE]
+> **Board Games** is a real-time multiplayer gaming platform featuring a beautiful dark-mode interface styled with cosmic animated gradients and interactive canvas particle backgrounds.
 
 ---
 
-## Tech Stack
-* **Frontend**: React, Next.js (Pages Router / Client-side rendering), Tailwind CSS
-* **Backend**: Express Server, Socket.io (WebSocket client-server sync)
-* **Language**: TypeScript
+## 🎮 Features & Supported Games
+
+### 🎯 Sequence
+* **Objective:** Connect 5 chips in a row (horizontal, vertical, or diagonal).
+* **Mechanics:** Use Two-Eyed Jacks as wild cards and One-Eyed Jacks to remove opponent chips.
+* **UI Features:** Dynamic card hands, cell highlights (yellow for playable, red for removable), and auto-locks for completed sequences.
+
+### 💎 Splendor
+* **Objective:** First player to reach 15 points wins.
+* **Mechanics:** Collect gem tokens (White, Blue, Green, Red, Black, and Gold). Purchase development cards to build permanent gemstone bonuses. Attract Nobles for bonus points.
+
+### 🏰 Carcassonne
+* **Objective:** Score points by completing features and placing meeples.
+* **Mechanics:** Place medieval terrain tiles (Cities, Roads, Monasteries) on a shared board.
+* **UI Features:** Supports drag-to-pan, scroll-to-zoom, and tile rotation.
+
+### 🎨 Azul
+* **Objective:** Complete your decorative palace wall without breaking tiles.
+* **Mechanics:** Draft mosaic tiles from circular factories. Manage tile overflow penalties and claim tile set completion bonuses.
+
+> [!TIP]
+> **Single-Player AI Mode**
+> Toggle the "Play vs AI" mode in any lobby! The smart AI engine will analyze boards, build paths, evaluate market cards, rotate tiles, and score pattern lines automatically so you can play solo.
 
 ---
 
-## Setup and Installation
+## ✨ Visual and Interaction Design
+
+* 🌌 **Interactive Background**: Animated canvas-based particle network that drifts in the background. Particles establish links with nearby nodes and react to mouse cursor/touch hover gravity.
+* 🎨 **Cosmic Theme**: Deep animated gradient background with a cardboard texture overlay. Visual accents use blue-purple-pink text gradients and glowing focus highlights.
+* ⚡ **Micro-Animations**: Custom validation toasts paired with hand-shaking animations for instant feedback on invalid moves.
+* 📱 **Responsive Layout**: Mobile-first design, overlapping card hands, floating widgets, and a toggleable slide-out chat panel.
+
+---
+
+## 🚀 Setup and Installation
 
 ### Prerequisites
-Ensure Node.js (v18 or v20 recommended) is installed on your system.
+Make sure you have Node.js installed (v18 or v20 recommended).
 
 ### 1. Install Dependencies
-Navigate to the project root directory and run:
 ```bash
 npm install
 ```
 
-### 2. Configure Environment Variables
+### 2. Configure Environment
 Create a `.env` file in the root directory:
-```env
-PORT=3000
-NODE_ENV=development
+```bash
+echo "PORT=3000\nNODE_ENV=development" > .env
 ```
 
 ### 3. Run the Development Server
-Real-time gameplay uses a combined HTTP and WebSockets connection. Run the server entry point:
+Real-time gameplay uses a combined HTTP and WebSockets connection. Start the server:
 ```bash
 npm run dev
 ```
-This script starts the project using `ts-node` and spins up Next.js concurrently on port `3000`.
+Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
 
-Open your browser and navigate to:
+---
+
+## 🗺️ Visual Project Architecture
+
+This project uses a centralized WebSocket server (Express + Socket.io) to manage various isolated game instances in real-time. Below is a visual representation of the architecture. *(These diagrams render natively in Obsidian and GitHub).*
+
+### System Overview
+
+```mermaid
+graph TD
+    Client[📱 Next.js Frontend] <-->|WebSockets / Socket.io| Server[🖥️ Express Server]
+    
+    Server --> GameManager[🎲 Game Manager]
+    
+    GameManager --> Room1[🏠 Room 1]
+    GameManager --> Room2[🏠 Room N]
+    
+    Room1 --> AI[🤖 AI Player]
+    Room1 --> GameLogic[🧠 Game Logic Engine]
+    
+    GameLogic --> Sequence[🎯 Sequence]
+    GameLogic --> Splendor[💎 Splendor]
+    GameLogic --> Carcassonne[🏰 Carcassonne]
+    GameLogic --> Azul[🎨 Azul]
+    
+    classDef client fill:#1E293B,stroke:#3B82F6,stroke-width:2px,color:#fff;
+    classDef server fill:#0F172A,stroke:#10B981,stroke-width:2px,color:#fff;
+    classDef game fill:#312E81,stroke:#8B5CF6,stroke-width:2px,color:#fff;
+    
+    class Client client;
+    class Server,GameManager server;
+    class Room1,Room2,GameLogic,AI,Sequence,Splendor,Carcassonne,Azul game;
 ```
-http://localhost:3000
+
+### Real-Time Gameplay Flow
+
+```mermaid
+sequenceDiagram
+    participant Player as 👤 Player
+    participant UI as 💻 Next.js UI
+    participant Server as ⚙️ Express Server
+    participant Game as 🎲 Game Engine
+
+    Player->>UI: Create / Join Room
+    UI->>Server: WebSocket Handshake (Join Room)
+    Server-->>UI: Connected! Room ID Assigned
+    Player->>UI: Select Game & Press Start
+    UI->>Server: Start Game (e.g., Azul)
+    Server->>Game: Initialize Game State
+    Game-->>Server: Initial State Generated
+    Server-->>UI: Broadcast State to all Players in Room
+    
+    loop Turn-Based Gameplay
+        Player->>UI: Makes Move (Drag/Click)
+        UI->>Server: Send Move Action
+        Server->>Game: Validate & Apply Move
+        alt Move Invalid
+            Game-->>Server: Error
+            Server-->>UI: Reject Move (Shake Animation)
+        else Move Valid
+            Game-->>Server: State Updated
+            Server-->>UI: Broadcast New State to All Players
+        end
+        
+        opt Play vs AI enabled
+            Game->>Game: Trigger AI Turn Generation
+            Game-->>Server: AI Move Executed
+            Server-->>UI: Broadcast New State
+        end
+    end
 ```
 
 ---
 
-## Project Architecture
+## 📁 Directory Structure Breakdown
+
+```mermaid
+mindmap
+  root((Board Games))
+    app
+      globals.css
+      layout.tsx
+      page.tsx
+      test
+    components
+      Chat.tsx
+      GameRoom.tsx
+      HowToPlayModal.tsx
+      InteractiveBackground.tsx
+      Lobby.tsx
+      VictoryModal.tsx
+      games
+        AzulBoard.tsx
+        CarcassonneBoard.tsx
+        SequenceBoard.tsx
+        SplendorBoard.tsx
+    lib
+      db.ts
+      GameManager.ts
+      games
+        AI.ts
+        Azul.ts
+        Carcassonne.ts
+        Sequence.ts
+        Splendor.ts
+    server.ts
 ```
-├── app/                  # Next.js page layouts and global stylesheet
-│   ├── globals.css       # Core styling & custom animations
-│   ├── page.tsx          # Landing/Lobby entry container
-│   └── test/             # Dev test page suites
-├── components/           # React UI components
-│   ├── Lobby.tsx         # Dashboard for game selection & AI toggles
-│   ├── GameRoom.tsx      # Main game lobby wrapper & chat handler
-│   ├── InteractiveBackground.tsx # Canvas interactive particle background
-│   ├── Chat.tsx          # Real-time message exchange sidebar
-│   ├── VictoryModal.tsx  # Game end celebration screen
-│   ├── HowToPlayModal.tsx# Instructions deck for all games
-│   └── games/            # Specialized board components (Azul, Sequence, etc.)
-├── lib/                  # Shared game engines & logic
-│   ├── GameManager.ts    # Server-side room routing & game instances
-│   ├── games/            # Pure TypeScript rule classes
-│   │   ├── AI.ts         # Move generator heuristics for all 4 games
-│   │   ├── Sequence.ts   # Sequence rules & sequence checking
-│   │   ├── Splendor.ts   # Splendor token & purchase engines
-│   │   ├── Carcassonne.ts# Carcassonne scoring & tile mapping
-│   │   └── Azul.ts       # Azul drafts & wall tile matching
-└── server.ts             # Express server & Socket.io WebSocket listeners
-```
 
----
-
-## Deployment Configurations
-
-### Google Cloud App Engine
-WebSocket servers require a sticky/persistent single-instance runner to prevent Socket.io handshakes from failing across load balancers.
-
-1. Ensure TypeScript is installed in production dependencies:
-   ```bash
-   npm install ts-node typescript --save
-   ```
-2. Verify scripts in `package.json`:
-   ```json
-   "scripts": {
-     "build": "next build",
-     "start": "ts-node --project tsconfig.json server.ts"
-   }
-   ```
-3. Use the following `app.yaml` configuration:
-   ```yaml
-   runtime: nodejs20
-   env: standard
-   instance_class: F2
-   automatic_scaling:
-     max_instances: 1
-   env_variables:
-     NODE_ENV: "production"
-   ```
-4. Deploy using the gcloud CLI:
-   ```bash
-   gcloud app deploy
-   ```
-
-### Quick Ad-hoc Testing (Localtunnel)
-To test multiplayer over the internet without deploying to cloud providers:
-1. Run the local dev server (`npm run dev`).
-2. Run this command in a separate terminal:
-   ```bash
-   npx localtunnel --port 3000
-   ```
-3. Share the generated public URL with other players.
-
----
-
-## Developer Tests
-To test individual mechanics in isolation without requiring multiple active players:
-1. Start the dev server.
-2. Navigate to:
-   ```
-   http://localhost:3000/test
-   ```
-From this dashboard, you can verify victory screens, sequence locks, chip removals, and token mechanics.
+> [!IMPORTANT]
+> If you are exploring this repository in **Obsidian**, the mermaid diagrams above will render natively as interactive graphs! You can also utilize Obsidian Canvas to lay out the markdown files visually.
